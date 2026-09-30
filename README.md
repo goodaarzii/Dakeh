@@ -94,13 +94,17 @@ make sqlc        # regenerate DB code
 
 ## Roadmap
 
-- [ ] Database schema and diagram
-- [ ] Auth (register, login, refresh, roles)
-- [ ] Catalog (categories, products, variants, images)
-- [ ] Cart (Redis)
-- [ ] Orders, stock, and checkout
-- [ ] Payments
-- [ ] Favorites and ratings
+Full endpoint list and build order: [docs/API.md](docs/API.md). Database diagram: [docs/schema.md](docs/schema.md).
+
+- [ ] Phase 0: Foundation (Docker Compose, config, migrations, sqlc, CI)
+- [ ] Phase 1: Auth, users, roles
+- [ ] Phase 2: Addresses
+- [ ] Phase 3: Catalog (categories, products, variants, images, stock) and seed data
+- [ ] Phase 4: Cart (Redis)
+- [ ] Phase 5: Orders and checkout
+- [ ] Phase 6: Payments
+- [ ] Phase 7: Favorites and reviews
+- [ ] Phase 8: Polish (rate limiting, search, tests, docs)
 - [ ] Frontend
 - [ ] Admin UI
 
