@@ -41,6 +41,10 @@ type RegisterInput struct {
 	Password string
 	FullName string
 }
+type LoginInput struct {
+	Email    string
+	Password string
+}
 
 func (s *Service) Register(ctx context.Context, in RegisterInput) (domain.User, error) {
 	hash, err := s.hasher.Hash(in.Password)
@@ -54,6 +58,28 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (domain.User, 
 		PasswordHash: hash,
 		FullName:     strings.TrimSpace(in.FullName),
 	})
+}
+func (s *Service) Login(ctx context.Context, in LoginInput) (domain.User, error) {
+	u, err := s.repo.GetByEmail(ctx, normalizeEmail(in.Email))
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, domain.ErrInvalidCredentials
+	}
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	if err := s.hasher.Compare(u.PasswordHash, in.Password); err != nil {
+		return domain.User{}, domain.ErrInvalidCredentials
+	}
+	if !u.IsActive {
+		return domain.User{}, domain.ErrUserInactive
+	}
+
+	if err := s.repo.UpdateLastLogin(ctx, u.ID); err != nil {
+		return domain.User{}, err
+	}
+	return u, nil
+
 }
 
 // Authenticate checks credentials. Login (JWT) will call this later.

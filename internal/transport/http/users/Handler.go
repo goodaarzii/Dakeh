@@ -17,20 +17,22 @@ import (
 // *userusecase.Service satisfies it.
 type Service interface {
 	Register(ctx context.Context, in userusecase.RegisterInput) (domain.User, error)
+	Login(ctx context.Context, in userusecase.LoginInput) (domain.User, error)
 }
 
 type Handler struct {
 	svc Service
 }
 
-func NewHandler(svc Service) *Handler {
+func NewHandler(svc *userusecase.Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// RegisterRoutes lets each feature own its routes. app/routes.go just calls this.
-func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
+// UsersRoutes lets each feature own its routes. app/routes.go just calls this.
+func (h *Handler) UsersRoutes(r *gin.RouterGroup) {
 	auth := r.Group("/auth")
 	auth.POST("/register", h.Register)
+	auth.POST("/login", h.Login)
 }
 
 func (h *Handler) Register(c *gin.Context) {
@@ -46,6 +48,25 @@ func (h *Handler) Register(c *gin.Context) {
 		Phone:    req.Phone,
 		Password: req.Password,
 		FullName: req.FullName,
+	})
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+
+	response.JSON(c, http.StatusCreated, toUserResponse(u))
+}
+func (h *Handler) Login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// err.Error() is verbose; later you can map validator errors to a clean list.
+		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
+	u, err := h.svc.Login(c.Request.Context(), userusecase.LoginInput{
+		Email:    req.Email,
+		Password: req.Password,
 	})
 	if err != nil {
 		h.writeError(c, err)

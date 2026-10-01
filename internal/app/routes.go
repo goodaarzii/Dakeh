@@ -29,7 +29,7 @@ func (a *Application) Mount() http.Handler {
 	// users
 	userRepo := postgres.NewUserRepo(queries)
 	userSvc := userusecase.NewService(userRepo, security.NewBcryptHasher())
-	userhttp.NewHandler(userSvc).RegisterRoutes(api)
+	userhttp.NewHandler(userSvc).UsersRoutes(api)
 
 	// products, cart, orders... follow the same four lines.
 

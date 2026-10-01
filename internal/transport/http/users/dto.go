@@ -16,6 +16,11 @@ type registerRequest struct {
 	FullName string `json:"full_name" binding:"required,max=255"`
 }
 
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email,max=255"`
+	Password string `json:"password" binding:"required,min=4,max=72"`
+}
+
 // userResponse is what the client receives. There is no password_hash here, by design.
 type userResponse struct {
 	ID        uuid.UUID `json:"id"`
