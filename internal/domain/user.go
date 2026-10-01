@@ -20,6 +20,7 @@ type User struct {
 	Phone        string
 	PasswordHash string
 	FullName     string
+	Token        string
 	Role         Role
 	IsActive     bool
 	LastLoginAt  *time.Time

@@ -13,7 +13,6 @@ import (
 )
 
 // Mount is the composition root: it builds every object and connects them.
-// Flow for each feature: repository -> usecase -> handler -> routes.
 func (a *Application) Mount() http.Handler {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
@@ -26,12 +25,14 @@ func (a *Application) Mount() http.Handler {
 
 	queries := sqlc.New(a.DB)
 
+	// shared helpers
+	hasher := security.NewBcryptHasher()
+	tokens := security.NewJWTIssuer(a.Config.JWTSecret, a.Config.JWTTTL)
+
 	// users
 	userRepo := postgres.NewUserRepo(queries)
-	userSvc := userusecase.NewService(userRepo, security.NewBcryptHasher())
-	userhttp.NewHandler(userSvc).UsersRoutes(api)
-
-	// products, cart, orders... follow the same four lines.
+	userSvc := userusecase.NewService(userRepo, hasher, tokens)
+	userhttp.NewHandler(userSvc).RegisterRoutes(api)
 
 	return r
 }

@@ -1,6 +1,10 @@
 package response
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 type errorBody struct {
 	Error errorDetail `json:"error"`
@@ -19,4 +23,19 @@ func JSON(c *gin.Context, status int, data any) {
 // { "error": { "code": "...", "message": "..." } }
 func Error(c *gin.Context, status int, code, message string) {
 	c.AbortWithStatusJSON(status, errorBody{Error: errorDetail{Code: code, Message: message}})
+}
+
+func GetTokenFromRequest(r *http.Request) string {
+	tokenAuth := r.Header.Get("Authorization")
+	tokenQuery := r.URL.Query().Get("token")
+
+	if tokenAuth != "" {
+		return tokenAuth
+	}
+
+	if tokenQuery != "" {
+		return tokenQuery
+	}
+
+	return ""
 }

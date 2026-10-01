@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,8 +23,9 @@ func main() {
 
 // run keeps main tiny and lets deferred cleanup (pool.Close) actually run.
 func run() error {
-	_ = godotenv.Load() // loads .env if present; ignored in production
-
+	if err := godotenv.Load(); err != nil {
+		slog.Warn(".env not loaded", "err", err)
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
