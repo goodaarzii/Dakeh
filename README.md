@@ -75,7 +75,7 @@ Design decisions:
 ```bash
 git clone https://github.com/<your-username>/dakeh.git
 cd dakeh
-cp .env.example .env
+cp .env.go.example .env.go
 docker compose up -d
 make migrate-up
 make run
