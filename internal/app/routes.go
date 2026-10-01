@@ -7,7 +7,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	repo "github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/json"
+	userHandler "github.com/goodaarzii/dakeh/internal/transport/http/users"
+	userService "github.com/goodaarzii/dakeh/internal/usecase/user"
 )
 
 func (app *Application) Mount() http.Handler {
@@ -22,9 +25,8 @@ func (app *Application) Mount() http.Handler {
 		json.Write(w, http.StatusOK, []byte("all good"))
 	})
 
-	//products := product.NewHandler(product.NewService(repo.New(app.Db)))
-	//r.Get("/products", products.ListProducts)
-	//r.Get("/product/{id}", products.GetProductByID)
+	users := userHandler.NewHandler(userService.NewService(repo.New(app.DB)))
+	r.Get("/signup", users.CreateUser)
 
 	return r
 }
