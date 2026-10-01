@@ -2,44 +2,45 @@ package main
 
 import (
 	"context"
-	"log/slog"
+	"log"
 	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 
 	"github.com/goodaarzii/dakeh/internal/app"
 	"github.com/goodaarzii/dakeh/internal/config"
-	"github.com/goodaarzii/dakeh/internal/env"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
-	ctx := context.Background()
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
 
-	slog.Info("start", ctx)
+// run keeps main tiny and lets deferred cleanup (pool.Close) actually run.
+func run() error {
+	_ = godotenv.Load() // loads .env if present; ignored in production
 
-	cfg := config.Config{
-		Addr: ":8080",
-		DB: config.DBConfig{
-			DSN: env.GetString("GOOSE_DBSTRING", "host=localhost user=mohsen1212 password=m021021021M dbname=dakeh sslmode=disable"),
-		},
+	cfg, err := config.Load()
+	if err != nil {
+		return err
 	}
 
-	pool, err := pgxpool.New(ctx, cfg.DB.DSN)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		slog.Error("error in coonect ", err)
+		return err
 	}
 	defer pool.Close()
 
-	slog.Info("dsn db", cfg.DB.DSN)
-
-	api := app.Application{
-		Config: cfg,
-		DB:     pool,
+	if err := pool.Ping(ctx); err != nil {
+		return err
 	}
 
-	if err := api.Run(api.Mount()); err != nil {
-		slog.Error("error starting server", err)
-		return
-	}
-
+	return app.New(cfg, pool).Run(ctx)
 }

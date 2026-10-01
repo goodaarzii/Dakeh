@@ -1,46 +1,37 @@
 package app
 
 import (
-	"log"
 	"net/http"
-	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	repo "github.com/goodaarzii/dakeh/db/sqlc"
-	"github.com/goodaarzii/dakeh/internal/json"
-	userHandler "github.com/goodaarzii/dakeh/internal/transport/http/users"
-	userService "github.com/goodaarzii/dakeh/internal/usecase/user"
+	"github.com/gin-gonic/gin"
+
+	"github.com/goodaarzii/dakeh/db/sqlc"
+	"github.com/goodaarzii/dakeh/internal/repository/postgres"
+	"github.com/goodaarzii/dakeh/internal/security"
+	userhttp "github.com/goodaarzii/dakeh/internal/transport/http/users"
+	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 )
 
-func (app *Application) Mount() http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
+// Mount is the composition root: it builds every object and connects them.
+// Flow for each feature: repository -> usecase -> handler -> routes.
+func (a *Application) Mount() http.Handler {
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		json.Write(w, http.StatusOK, []byte("all good"))
+	r.GET("/healthz", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
 	})
 
-	users := userHandler.NewHandler(userService.NewService(repo.New(app.DB)))
-	r.Get("/signup", users.CreateUser)
+	api := r.Group("/api/v1")
+
+	queries := sqlc.New(a.DB)
+
+	// users
+	userRepo := postgres.NewUserRepo(queries)
+	userSvc := userusecase.NewService(userRepo, security.NewBcryptHasher())
+	userhttp.NewHandler(userSvc).RegisterRoutes(api)
+
+	// products, cart, orders... follow the same four lines.
 
 	return r
-}
-
-// Run starts the HTTP server
-func (app *Application) Run(h http.Handler) error {
-	srv := &http.Server{
-		Addr:         app.Config.Addr,
-		Handler:      h,
-		WriteTimeout: 30 * time.Second,
-		ReadTimeout:  15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	log.Printf("listening on %s", app.Config.Addr)
-	return srv.ListenAndServe()
 }
