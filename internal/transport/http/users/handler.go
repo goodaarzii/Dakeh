@@ -26,7 +26,7 @@ func NewHandler(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
+func (h *Handler) RegisterUserRoutes(r *gin.RouterGroup) {
 	auth := r.Group("/auth")
 	auth.POST("/register", h.Register)
 }

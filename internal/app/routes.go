@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/repository/postgres"
 	"github.com/goodaarzii/dakeh/internal/security"
@@ -32,7 +31,9 @@ func (a *Application) Mount() http.Handler {
 	// users
 	userRepo := postgres.NewUserRepo(queries)
 	userSvc := userusecase.NewService(userRepo, hasher, tokens)
-	userhttp.NewHandler(userSvc).RegisterRoutes(api)
+	userhttp.NewHandler(userSvc).RegisterUserRoutes(api)
 
+	//protected := api.Group("", middleware.Auth(tokens))
+	//addresshttp.NewHandler(addressSvc).RegisterRoutes(protected)
 	return r
 }

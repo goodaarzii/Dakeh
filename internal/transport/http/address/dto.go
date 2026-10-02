@@ -12,17 +12,17 @@ import (
 // Lat/Lng are pointers so that a real 0 is accepted and a missing field is rejected:
 // with a plain float64, `required` treats 0 as "missing".
 type addressRequest struct {
-	Label         string   `json:"label" binding:"max=50"`
-	RecipientName string   `json:"recipient_name" binding:"required,max=255"`
-	Phone         string   `json:"phone" binding:"required,min=7,max=20"`
-	Country       string   `json:"country" binding:"required,max=100"`
-	Province      string   `json:"province" binding:"required,max=100"`
-	City          string   `json:"city" binding:"required,max=100"`
-	Street        string   `json:"street" binding:"required,max=500"`
-	PostalCode    string   `json:"postal_code" binding:"max=20"`
-	Lat           *float64 `json:"lat" binding:"required,gte=-90,lte=90"`
-	Lng           *float64 `json:"lng" binding:"required,gte=-180,lte=180"`
-	IsDefault     bool     `json:"is_default"` // only used on create
+	Label         string  `json:"label" binding:"max=50"`
+	RecipientName string  `json:"recipient_name" binding:"required,max=255"`
+	Phone         string  `json:"phone" binding:"required,min=7,max=20"`
+	Country       string  `json:"country" binding:"required,max=100"`
+	Province      string  `json:"province" binding:"required,max=100"`
+	City          string  `json:"city" binding:"required,max=100"`
+	Street        string  `json:"street" binding:"required,max=500"`
+	PostalCode    string  `json:"postal_code" binding:"max=20"`
+	Lat           float64 `json:"lat" binding:"required,gte=-90,lte=90"`
+	Lng           float64 `json:"lng" binding:"required,gte=-180,lte=180"`
+	IsDefault     bool    `json:"is_default"` // only used on create
 }
 
 // addressResponse is what the client receives. No user_id, the client already knows who it is.
@@ -60,4 +60,12 @@ func toAddressResponse(a domain.Address) addressResponse {
 		CreatedAt:     a.CreatedAt,
 		UpdatedAt:     a.UpdatedAt,
 	}
+}
+
+func toAddressResponses(list []domain.Address) []addressResponse {
+	out := make([]addressResponse, len(list))
+	for i, a := range list {
+		out[i] = toAddressResponse(a)
+	}
+	return out
 }
