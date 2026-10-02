@@ -10,6 +10,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type Address struct {
+	ID            uuid.UUID
+	UserID        uuid.UUID
+	Label         string
+	RecipientName string
+	Phone         string
+	Country       string
+	Province      string
+	City          string
+	Street        string
+	PostalCode    string
+	Lat           float64
+	Lng           float64
+	IsDefault     bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     *time.Time
+}
+
 type User struct {
 	ID           uuid.UUID
 	Email        string

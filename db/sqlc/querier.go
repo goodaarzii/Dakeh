@@ -11,9 +11,16 @@ import (
 )
 
 type Querier interface {
+	ClearDefaultAddress(ctx context.Context, userID uuid.UUID) error
+	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	GetAddressByID(ctx context.Context, arg GetAddressByIDParams) (Address, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	ListAddressesByUser(ctx context.Context, userID uuid.UUID) ([]Address, error)
+	SetDefaultAddress(ctx context.Context, arg SetDefaultAddressParams) (int64, error)
+	SoftDeleteAddress(ctx context.Context, arg SoftDeleteAddressParams) (int64, error)
+	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)
 	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
 }
 
