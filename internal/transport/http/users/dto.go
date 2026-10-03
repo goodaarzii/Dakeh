@@ -15,6 +15,10 @@ type registerRequest struct {
 	Password string `json:"password" binding:"required,min=8,max=72"`
 	FullName string `json:"full_name" binding:"required,max=255"`
 }
+type loginRequest struct {
+	Email    string `json:"email" binding:"required,email,max=255"`
+	Password string `json:"password" binding:"required,min=8,max=72"`
+}
 
 // userResponse has no password_hash and no token. A user is not a token.
 type userResponse struct {

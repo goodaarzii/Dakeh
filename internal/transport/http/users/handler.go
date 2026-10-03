@@ -16,6 +16,7 @@ import (
 // Service is what the handler needs from the usecase layer.
 type Service interface {
 	Register(ctx context.Context, in userusecase.RegisterInput) (userusecase.AuthResult, error)
+	Login(ctx context.Context, email, password string) (userusecase.AuthResult, error)
 }
 
 type Handler struct {
@@ -29,6 +30,7 @@ func NewHandler(svc Service) *Handler {
 func (h *Handler) RegisterUserRoutes(r *gin.RouterGroup) {
 	auth := r.Group("/auth")
 	auth.POST("/register", h.Register)
+	auth.POST("/login", h.Login)
 }
 
 func (h *Handler) Register(c *gin.Context) {
@@ -50,6 +52,21 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	response.JSON(c, http.StatusCreated, toAuthResponse(res))
+}
+
+func (h *Handler) Login(c *gin.Context) {
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	res, err := h.svc.Login(c.Request.Context(), req.Email, req.Password)
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	response.JSON(c, http.StatusOK, toAuthResponse(res))
+
 }
 
 func (h *Handler) writeError(c *gin.Context, err error) {
