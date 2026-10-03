@@ -41,7 +41,7 @@ func (h *Handler) RegisterAddressRoutes(r *gin.RouterGroup) {
 	g.GET("", h.GetUserAddresses)
 	g.GET("/:id", h.GetByID)
 	g.DELETE("/:id", h.DeleteAddress)
-
+	g.PUT("/:id", h.Update)
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -50,8 +50,7 @@ func (h *Handler) Create(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	slog.Info("userid ", middleware.UserID(c))
-	slog.Info("lat -lng ", req.Lat, req.Lng)
+
 	addr, err := h.svc.Create(c.Request.Context(), domain.Address{
 		UserID:        middleware.UserID(c),
 		Label:         req.Label,
@@ -124,11 +123,34 @@ func (h *Handler) Update(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
 		return
 	}
-	deleteAddress, err := h.svc.Delete(c.Request.Context(), id, middleware.UserID(c))
-	if err != nil {
+	var req addressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	response.JSON(c, http.StatusOK, NewStatusResponse(deleteAddress))
+
+	addr, err := h.svc.Update(c.Request.Context(),
+		domain.Address{
+			ID:            id,
+			UserID:        middleware.UserID(c),
+			Label:         req.Label,
+			RecipientName: req.RecipientName,
+			Phone:         req.Phone,
+			Country:       req.Country,
+			Province:      req.Province,
+			City:          req.City,
+			Street:        req.Street,
+			PostalCode:    req.PostalCode,
+			Lat:           req.Lat,
+			Lng:           req.Lng,
+			IsDefault:     req.IsDefault,
+		})
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+
+	response.JSON(c, http.StatusCreated, toAddressResponse(addr))
 
 }
 

@@ -84,7 +84,7 @@ func (r *AddressRepo) Update(ctx context.Context, u domain.Address) (domain.Addr
 		RecipientName: u.RecipientName,
 		Phone:         u.Phone,
 		Country:       u.Country,
-		Province:      "",
+		Province:      u.Province,
 		City:          u.City,
 		Street:        u.Street,
 		PostalCode:    u.PostalCode,
