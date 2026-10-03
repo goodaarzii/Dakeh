@@ -2,7 +2,6 @@ package address
 
 import (
 	"context"
-	"time"
 
 	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/google/uuid"
@@ -11,9 +10,9 @@ import (
 type Repository interface {
 	Create(ctx context.Context, address domain.Address) (domain.Address, error)
 	GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Address, error)
-	GetAllAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error)
+	GetUserAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error)
 	Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) (int64, error)
-	update(ctx context.Context, u domain.Address) (domain.Address, error)
+	Update(ctx context.Context, u domain.Address) (domain.Address, error)
 }
 
 type TokenIssuer interface {
@@ -21,12 +20,11 @@ type TokenIssuer interface {
 }
 
 type Service struct {
-	repo   Repository
-	tokens TokenIssuer
+	repo Repository
 }
 
-func NewService(repo Repository, tokens TokenIssuer) *Service {
-	return &Service{repo: repo, tokens: tokens}
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo}
 }
 
 type addressInput struct {
@@ -43,23 +41,23 @@ type addressInput struct {
 	IsDefault     bool
 }
 
-func (s *Service) Create(ctx context.Context, in addressInput) (domain.Address, error) {
+func (s *Service) Create(ctx context.Context, in domain.Address) (domain.Address, error) {
 	addr, err := s.repo.Create(ctx, domain.Address{
 		ID:            in.ID,
-		UserID:        uuid.UUID{},
+		UserID:        in.UserID,
 		Label:         in.Label,
 		RecipientName: in.RecipientName,
 		Phone:         in.Phone,
 		Country:       in.Country,
-		Province:      "",
+		Province:      in.Province,
 		City:          in.City,
 		Street:        in.Street,
-		PostalCode:    "",
-		Lat:           0,
-		Lng:           0,
+		PostalCode:    in.PostalCode,
+		Lat:           in.Lat,
+		Lng:           in.Lng,
 		IsDefault:     in.IsDefault,
-		CreatedAt:     time.Time{},
-		UpdatedAt:     time.Time{},
+		CreatedAt:     in.UpdatedAt,
+		UpdatedAt:     in.CreatedAt,
 	})
 	if err != nil {
 		return domain.Address{}, err
@@ -74,8 +72,8 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (
 	}
 	return addr, nil
 }
-func (s *Service) getAllAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error) {
-	addresses, err := s.repo.GetAllAddresses(ctx, userID)
+func (s *Service) GetUserAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error) {
+	addresses, err := s.repo.GetUserAddresses(ctx, userID)
 	if err != nil {
 		return []domain.Address{}, err
 	}
@@ -91,8 +89,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) (i
 
 }
 
-func (s *Service) update(ctx context.Context, u domain.Address) (domain.Address, error) {
-	addr, err := s.repo.update(ctx, u)
+func (s *Service) Update(ctx context.Context, u domain.Address) (domain.Address, error) {
+	addr, err := s.repo.Update(ctx, u)
 	if err != nil {
 		return domain.Address{}, err
 	}

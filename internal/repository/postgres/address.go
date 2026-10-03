@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
@@ -25,6 +26,7 @@ func (r *AddressRepo) Create(ctx context.Context, u domain.Address) (domain.Addr
 		Phone:         u.Phone,
 		Country:       u.Country,
 		City:          u.City,
+		Province:      u.Province,
 		Street:        u.Street,
 		PostalCode:    u.PostalCode,
 		Lat:           u.Lat,
@@ -34,7 +36,7 @@ func (r *AddressRepo) Create(ctx context.Context, u domain.Address) (domain.Addr
 	if err != nil {
 		return domain.Address{}, err
 	}
-
+	slog.Info("in repo ", row.ID)
 	return toDomainAddress(row), nil
 }
 
@@ -52,7 +54,7 @@ func (r *AddressRepo) GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUI
 
 }
 
-func (r *AddressRepo) GetListOfAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error) {
+func (r *AddressRepo) GetUserAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error) {
 	addresses, err := r.q.ListAddressesByUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -100,6 +102,8 @@ func (r *AddressRepo) Update(ctx context.Context, u domain.Address) (domain.Addr
 
 func toDomainAddress(u sqlc.Address) domain.Address {
 	return domain.Address{
+		ID:            u.ID,
+		Province:      u.Province,
 		UserID:        u.UserID,
 		Label:         u.Label,
 		RecipientName: u.RecipientName,

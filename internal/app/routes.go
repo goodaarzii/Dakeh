@@ -5,9 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/goodaarzii/dakeh/db/sqlc"
+	"github.com/goodaarzii/dakeh/internal/middleware"
 	"github.com/goodaarzii/dakeh/internal/repository/postgres"
 	"github.com/goodaarzii/dakeh/internal/security"
+	"github.com/goodaarzii/dakeh/internal/transport/http/address"
 	userhttp "github.com/goodaarzii/dakeh/internal/transport/http/users"
+	address2 "github.com/goodaarzii/dakeh/internal/usecase/address"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 )
 
@@ -33,7 +36,9 @@ func (a *Application) Mount() http.Handler {
 	userSvc := userusecase.NewService(userRepo, hasher, tokens)
 	userhttp.NewHandler(userSvc).RegisterUserRoutes(api)
 
-	//protected := api.Group("", middleware.Auth(tokens))
-	//addresshttp.NewHandler(addressSvc).RegisterRoutes(protected)
+	protected := api.Group("", middleware.Auth(tokens))
+	addrRepo := postgres.NewAddressRepo(queries)
+	addrUsaCase := address2.NewService(addrRepo)
+	address.NewHandler(addrUsaCase).RegisterAddressRoutes(protected)
 	return r
 }

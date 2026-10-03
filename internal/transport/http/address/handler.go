@@ -16,8 +16,8 @@ import (
 type Service interface {
 	Create(ctx context.Context, address domain.Address) (domain.Address, error)
 	GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Address, error)
-	UpdateAddress(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Address, error)
-	DeleteAddress(ctx context.Context, id uuid.UUID, userID uuid.UUID) (int64, error)
+	Update(ctx context.Context, u domain.Address) (domain.Address, error)
+	Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) (int64, error)
 	GetUserAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error)
 }
 
@@ -35,11 +35,13 @@ func NewHandler(svc Service) *Handler {
 }
 
 func (h *Handler) RegisterAddressRoutes(r *gin.RouterGroup) {
-	auth := r.Group("/user")
-	auth.POST("/createAddress", h.Create)
-	auth.POST("/getAddressById/{id}", h.GetByID)
-	auth.GET("/getUserAddress", h.GetUserAddresses)
-	auth.GET("/deleteAddress/{id}", h.GetUserAddresses)
+
+	g := r.Group("/users/address")
+	g.POST("", h.Create)
+	g.GET("", h.GetUserAddresses)
+	g.GET("/:id", h.GetByID)
+	g.DELETE("/:id", h.DeleteAddress)
+
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -48,7 +50,8 @@ func (h *Handler) Create(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-
+	slog.Info("userid ", middleware.UserID(c))
+	slog.Info("lat -lng ", req.Lat, req.Lng)
 	addr, err := h.svc.Create(c.Request.Context(), domain.Address{
 		UserID:        middleware.UserID(c),
 		Label:         req.Label,
@@ -107,7 +110,21 @@ func (h *Handler) DeleteAddress(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
 		return
 	}
-	deleteAddress, err := h.svc.DeleteAddress(c.Request.Context(), id, middleware.UserID(c))
+	deleteAddress, err := h.svc.Delete(c.Request.Context(), id, middleware.UserID(c))
+	if err != nil {
+		return
+	}
+	response.JSON(c, http.StatusOK, NewStatusResponse(deleteAddress))
+
+}
+
+func (h *Handler) Update(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
+		return
+	}
+	deleteAddress, err := h.svc.Delete(c.Request.Context(), id, middleware.UserID(c))
 	if err != nil {
 		return
 	}
