@@ -12,7 +12,7 @@ type Repository interface {
 	Create(ctx context.Context, address domain.Address) (domain.Address, error)
 	GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (domain.Address, error)
 	GetAllAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error)
-	Delete(ctx context.Context, id uuid.UUID) (int64, error)
+	Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) (int64, error)
 	update(ctx context.Context, u domain.Address) (domain.Address, error)
 }
 
@@ -82,8 +82,8 @@ func (s *Service) getAllAddresses(ctx context.Context, userID uuid.UUID) ([]doma
 	return addresses, nil
 }
 
-func (s *Service) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
-	addr, err := s.repo.Delete(ctx, id)
+func (s *Service) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) (int64, error) {
+	addr, err := s.repo.Delete(ctx, id, userID)
 	if err != nil {
 		return -1, err
 	}

@@ -69,3 +69,17 @@ func toAddressResponses(list []domain.Address) []addressResponse {
 	}
 	return out
 }
+
+type StatusResponse struct {
+	Status    int64  `json:"status"` // rows changed: 0 or 1
+	Message   string `json:"message"`
+	IsSuccess bool   `json:"is_success"`
+}
+
+func NewStatusResponse(rows int64) StatusResponse {
+	if rows > 0 {
+		return StatusResponse{Status: rows, Message: "success", IsSuccess: true}
+	}
+	return StatusResponse{Status: rows, Message: "failed", IsSuccess: false}
+
+}

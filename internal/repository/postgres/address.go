@@ -62,10 +62,10 @@ func (r *AddressRepo) GetListOfAddresses(ctx context.Context, userID uuid.UUID) 
 
 }
 
-func (r *AddressRepo) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
+func (r *AddressRepo) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) (int64, error) {
 	address, err := r.q.SoftDeleteAddress(ctx, sqlc.SoftDeleteAddressParams{
 		ID:     id,
-		UserID: id,
+		UserID: userID,
 	})
 	if err != nil {
 		return -1, err
