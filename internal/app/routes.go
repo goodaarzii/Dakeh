@@ -9,8 +9,10 @@ import (
 	"github.com/goodaarzii/dakeh/internal/repository/postgres"
 	"github.com/goodaarzii/dakeh/internal/security"
 	"github.com/goodaarzii/dakeh/internal/transport/http/address"
+	product2 "github.com/goodaarzii/dakeh/internal/transport/http/product"
 	userhttp "github.com/goodaarzii/dakeh/internal/transport/http/users"
 	address2 "github.com/goodaarzii/dakeh/internal/usecase/address"
+	"github.com/goodaarzii/dakeh/internal/usecase/product"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 )
 
@@ -31,14 +33,23 @@ func (a *Application) Mount() http.Handler {
 	hasher := security.NewBcryptHasher()
 	tokens := security.NewJWTIssuer(a.Config.JWTSecret, a.Config.JWTTTL)
 
+	//middleware auth
+	protected := api.Group("", middleware.Auth(tokens))
+
 	// users
 	userRepo := postgres.NewUserRepo(queries)
 	userSvc := userusecase.NewService(userRepo, hasher, tokens)
 	userhttp.NewHandler(userSvc).RegisterUserRoutes(api)
 
-	protected := api.Group("", middleware.Auth(tokens))
+	//address
 	addrRepo := postgres.NewAddressRepo(queries)
 	addrUsaCase := address2.NewService(addrRepo)
 	address.NewHandler(addrUsaCase).RegisterAddressRoutes(protected)
+
+	//product
+	productRepo := postgres.NewProductRepo(queries)
+	productUseCase := product.NewService(productRepo)
+	product2.NewHandler(productUseCase).RegisterProductRoutes(protected)
+
 	return r
 }
