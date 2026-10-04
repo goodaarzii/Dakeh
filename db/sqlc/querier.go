@@ -13,15 +13,29 @@ import (
 type Querier interface {
 	ClearDefaultAddress(ctx context.Context, userID uuid.UUID) error
 	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
+	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
+	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// Fails with a foreign key error (23503) if the category still has products or children.
+	DeleteCategory(ctx context.Context, id uuid.UUID) (int64, error)
 	GetAddressByID(ctx context.Context, arg GetAddressByIDParams) (Address, error)
+	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
+	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
+	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	ListAddressesByUser(ctx context.Context, userID uuid.UUID) ([]Address, error)
+	// Returns every category. The usecase builds the tree from this flat list.
+	ListCategories(ctx context.Context) ([]Category, error)
+	ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error)
+	ListProductsByCategory(ctx context.Context, arg ListProductsByCategoryParams) ([]Product, error)
 	SetDefaultAddress(ctx context.Context, arg SetDefaultAddressParams) (int64, error)
 	SoftDeleteAddress(ctx context.Context, arg SoftDeleteAddressParams) (int64, error)
+	SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error)
 	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)
+	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
 	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
+	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 }
 
 var _ Querier = (*Queries)(nil)

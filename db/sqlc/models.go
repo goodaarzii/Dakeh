@@ -29,6 +29,34 @@ type Address struct {
 	DeletedAt     *time.Time
 }
 
+type Category struct {
+	ID          uuid.UUID
+	ParentID    *uuid.UUID
+	Name        string
+	Slug        string
+	Description string
+	ImageUrl    string
+	SortOrder   int32
+	IsActive    bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type Product struct {
+	ID          uuid.UUID
+	CategoryID  uuid.UUID
+	Name        string
+	Slug        string
+	Description string
+	Brand       string
+	Status      string
+	AvgRating   float64
+	RatingCount int32
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   *time.Time
+}
+
 type User struct {
 	ID           uuid.UUID
 	Email        string
