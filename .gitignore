@@ -1,0 +1,28 @@
+# Secrets and local config (commit only .env.example)
+.env
+.env.*
+!.env.example
+
+# Build output
+bin/
+dist/
+tmp/
+*.exe
+*.test
+*.out
+
+# Test and coverage
+coverage.*
+*.coverprofile
+
+# IDEs and editors
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
