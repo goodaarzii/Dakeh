@@ -1,9 +1,11 @@
 package response
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/goodaarzii/dakeh/internal/domain"
 )
 
 type errorBody struct {
@@ -38,4 +40,31 @@ func GetTokenFromRequest(r *http.Request) string {
 	}
 
 	return ""
+}
+
+func WriteError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, domain.ErrEmailTaken):
+		Error(c, http.StatusConflict, "email_taken", "email already registered")
+	case errors.Is(err, domain.ErrPhoneTaken):
+		Error(c, http.StatusConflict, "phone_taken", "phone already registered")
+	case errors.Is(err, domain.ErrNotFound):
+		Error(c, http.StatusNotFound, "not_found", "address not found")
+	default:
+		Error(c, http.StatusInternalServerError, "internal", "something went wrong")
+	}
+}
+
+type StatusResponse struct {
+	Status    int64  `json:"code"` // rows changed: 0 or 1
+	Message   string `json:"message"`
+	IsSuccess bool   `json:"is_success"`
+}
+
+func NewStatusResponse(rows int64) StatusResponse {
+	if rows > 0 {
+		return StatusResponse{Status: rows, Message: "success", IsSuccess: true}
+	}
+	return StatusResponse{Status: rows, Message: "failed", IsSuccess: false}
+
 }

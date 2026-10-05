@@ -2,8 +2,6 @@ package address
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,7 +64,7 @@ func (h *Handler) Create(c *gin.Context) {
 		IsDefault:     req.IsDefault,
 	})
 	if err != nil {
-		h.writeError(c, err)
+		response.WriteError(c, err)
 		return
 	}
 
@@ -83,7 +81,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 	addr, err := h.svc.GetByID(c.Request.Context(), id, middleware.UserID(c))
 
 	if err != nil {
-		h.writeError(c, err)
+		response.WriteError(c, err)
 		return
 	}
 	response.JSON(c, http.StatusOK, toAddressResponse(addr))
@@ -95,7 +93,7 @@ func (h *Handler) GetUserAddresses(c *gin.Context) {
 	addresses, err := h.svc.GetUserAddresses(c.Request.Context(), middleware.UserID(c))
 
 	if err != nil {
-		h.writeError(c, err)
+		response.WriteError(c, err)
 		return
 	}
 
@@ -113,7 +111,7 @@ func (h *Handler) DeleteAddress(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	response.JSON(c, http.StatusOK, NewStatusResponse(deleteAddress))
+	response.JSON(c, http.StatusOK, response.NewStatusResponse(deleteAddress))
 
 }
 
@@ -146,24 +144,10 @@ func (h *Handler) Update(c *gin.Context) {
 			IsDefault:     req.IsDefault,
 		})
 	if err != nil {
-		h.writeError(c, err)
+		response.WriteError(c, err)
 		return
 	}
 
 	response.JSON(c, http.StatusCreated, toAddressResponse(addr))
 
-}
-
-func (h *Handler) writeError(c *gin.Context, err error) {
-	switch {
-	case errors.Is(err, domain.ErrEmailTaken):
-		response.Error(c, http.StatusConflict, "email_taken", "email already registered")
-	case errors.Is(err, domain.ErrPhoneTaken):
-		response.Error(c, http.StatusConflict, "phone_taken", "phone already registered")
-	case errors.Is(err, domain.ErrNotFound):
-		response.Error(c, http.StatusNotFound, "not_found", "address not found")
-	default:
-		slog.Error("user request failed", "err", err)
-		response.Error(c, http.StatusInternalServerError, "internal", "something went wrong")
-	}
 }

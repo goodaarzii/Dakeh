@@ -2,7 +2,6 @@ package product
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 
@@ -14,6 +13,11 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, address domain.Product) (domain.Product, error)
+	Update(ctx context.Context, address domain.Product) (domain.Product, error)
+	GetByID(ctx context.Context, id uuid.UUID) (domain.Product, error)
+	Delete(ctx context.Context, id uuid.UUID) (int64, error)
+	ListProducts(ctx context.Context, offset int, pageSize int) ([]domain.Product, error)
+	ListProductsByCategory(ctx context.Context, categoryID *uuid.UUID, offset int, pageSize int) ([]domain.Product, error)
 }
 
 type Handler struct {
@@ -32,11 +36,11 @@ func NewHandler(svc Service) *Handler {
 func (h *Handler) RegisterProductRoutes(r *gin.RouterGroup) {
 
 	g := r.Group("/admin/product")
+	g.GET("/", h.ListProducts)
 	g.POST("", h.Create)
-	//g.GET("", h.GetUserAddresses)
-	//g.GET("/:id", h.GetByID)
-	//g.DELETE("/:id", h.DeleteAddress)
-	//g.PUT("/:id", h.Update)
+	g.GET("/:id", h.GetByID)
+	g.DELETE("/:id", h.Delete)
+	g.PUT("/:id", h.Update)
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -56,7 +60,7 @@ func (h *Handler) Create(c *gin.Context) {
 		Status:      domain.ProductStatus(req.Status),
 	})
 	if err != nil {
-		h.writeError(c, err)
+		response.WriteError(c, err)
 		return
 	}
 
@@ -64,16 +68,105 @@ func (h *Handler) Create(c *gin.Context) {
 
 }
 
-func (h *Handler) writeError(c *gin.Context, err error) {
-	switch {
-	case errors.Is(err, domain.ErrEmailTaken):
-		response.Error(c, http.StatusConflict, "email_taken", "email already registered")
-	case errors.Is(err, domain.ErrPhoneTaken):
-		response.Error(c, http.StatusConflict, "phone_taken", "phone already registered")
-	case errors.Is(err, domain.ErrNotFound):
-		response.Error(c, http.StatusNotFound, "not_found", "address not found")
-	default:
-		slog.Error("user request failed", "err", err)
-		response.Error(c, http.StatusInternalServerError, "internal", "something went wrong")
+func (h *Handler) Update(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
+		return
 	}
+	var req productRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
+	update, err := h.svc.Update(c.Request.Context(), domain.Product{
+		ID:          id,
+		CategoryID:  req.CategoryID,
+		Name:        req.Name,
+		Slug:        req.Slug,
+		Description: req.Description,
+		Brand:       req.Brand,
+		Status:      domain.ProductStatus(req.Status),
+	})
+	if err != nil {
+		response.WriteError(c, err)
+		return
+	}
+	response.JSON(c, http.StatusOK, toProductResponse(update))
+}
+
+func (h *Handler) GetByID(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
+		return
+	}
+	product, err := h.svc.GetByID(c.Request.Context(), id)
+	if err != nil {
+		response.WriteError(c, err)
+		return
+	}
+	response.JSON(c, http.StatusOK, toProductResponse(product))
+}
+
+func (h *Handler) Delete(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
+
+		return
+	}
+
+	deleteResult, err := h.svc.Delete(c.Request.Context(), id)
+	if err != nil {
+		response.WriteError(c, err)
+		return
+
+	}
+
+	response.JSON(c, http.StatusOK, response.NewStatusResponse(deleteResult))
+
+}
+func (h *Handler) ListProductsByCategory(c *gin.Context) {
+	var q listQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	page, pageSize := q.paging()
+
+	var categoryID *uuid.UUID
+	if q.CategoryID != "" {
+		id, err := uuid.Parse(q.CategoryID)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "invalid_category_id", "invalid category id")
+			return
+		}
+		categoryID = &id
+	}
+
+	products, err := h.svc.ListProductsByCategory(c.Request.Context(), categoryID, page, pageSize)
+	if err != nil {
+		response.WriteError(c, err)
+		return
+	}
+
+	response.JSON(c, http.StatusOK, toProductListResponse(products, page, pageSize))
+}
+func (h *Handler) ListProducts(c *gin.Context) {
+	var q listQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	page, pageSize := q.paging()
+
+	products, err := h.svc.ListProducts(c.Request.Context(), page, pageSize)
+	if err != nil {
+		response.WriteError(c, err)
+		return
+	}
+	slog.Info("products in handler", products)
+	response.JSON(c, http.StatusOK, toProductListResponse(products, page, pageSize))
 }
