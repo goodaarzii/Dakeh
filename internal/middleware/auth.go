@@ -7,18 +7,22 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/goodaarzii/dakeh/internal/transport/http/response"
 )
 
-const userIDKey = "userID"
+const (
+	userIDKey = "userID"
+	roleKey   = "role"
+)
 
 // TokenParser is what the middleware needs. *security.JWTIssuer satisfies it.
 type TokenParser interface {
-	Parse(token string) (uuid.UUID, error)
+	Parse(token string) (uuid.UUID, domain.Role, error)
 }
 
-// Auth reads "Authorization: Bearer <token>", verifies it ONCE,
-// and stores the user ID in the request context for handlers to use.
+// Auth answers "who are you?". It verifies the token ONCE and stores
+// the user ID and role in the request context. Failure means 401.
 func Auth(tokens TokenParser) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		scheme, token, ok := strings.Cut(c.GetHeader("Authorization"), " ")
@@ -27,13 +31,14 @@ func Auth(tokens TokenParser) gin.HandlerFunc {
 			return
 		}
 
-		userID, err := tokens.Parse(token)
+		userID, role, err := tokens.Parse(token)
 		if err != nil {
 			response.Error(c, http.StatusUnauthorized, "unauthorized", "invalid or expired token")
 			return
 		}
 
 		c.Set(userIDKey, userID)
+		c.Set(roleKey, role)
 		c.Next()
 	}
 }
@@ -43,4 +48,11 @@ func UserID(c *gin.Context) uuid.UUID {
 	v, _ := c.Get(userIDKey)
 	id, _ := v.(uuid.UUID)
 	return id
+}
+
+// Role returns the logged-in user's role. Only call it behind Auth.
+func Role(c *gin.Context) domain.Role {
+	v, _ := c.Get(roleKey)
+	r, _ := v.(domain.Role)
+	return r
 }

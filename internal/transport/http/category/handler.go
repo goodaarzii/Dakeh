@@ -31,7 +31,7 @@ func NewHandler(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) RegisterAddressRoutes(r *gin.RouterGroup) {
+func (h *Handler) RegisterCategoryRoutes(r *gin.RouterGroup) {
 
 	g := r.Group("/admin/category")
 	g.POST("", h.Create)

@@ -4,17 +4,19 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/goodaarzii/dakeh/db/sqlc"
+	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/goodaarzii/dakeh/internal/middleware"
 	"github.com/goodaarzii/dakeh/internal/repository/postgres"
 	"github.com/goodaarzii/dakeh/internal/security"
-	"github.com/goodaarzii/dakeh/internal/transport/http/address"
-	category2 "github.com/goodaarzii/dakeh/internal/transport/http/category"
-	product2 "github.com/goodaarzii/dakeh/internal/transport/http/product"
+	addresshttp "github.com/goodaarzii/dakeh/internal/transport/http/address"
+	categoryhttp "github.com/goodaarzii/dakeh/internal/transport/http/category"
+	producthttp "github.com/goodaarzii/dakeh/internal/transport/http/product"
 	userhttp "github.com/goodaarzii/dakeh/internal/transport/http/users"
-	address2 "github.com/goodaarzii/dakeh/internal/usecase/address"
-	"github.com/goodaarzii/dakeh/internal/usecase/category"
-	"github.com/goodaarzii/dakeh/internal/usecase/product"
+	addressusecase "github.com/goodaarzii/dakeh/internal/usecase/address"
+	categoryusecase "github.com/goodaarzii/dakeh/internal/usecase/category"
+	productusecase "github.com/goodaarzii/dakeh/internal/usecase/product"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 )
 
@@ -35,28 +37,32 @@ func (a *Application) Mount() http.Handler {
 	hasher := security.NewBcryptHasher()
 	tokens := security.NewJWTIssuer(a.Config.JWTSecret, a.Config.JWTTTL)
 
-	//middleware auth
+	// Three levels of access:
+	//   api       -> public (no token)
+	//   protected -> any logged-in user (Auth: 401 if no valid token)
+	//   admin     -> logged-in AND role admin (RequireRole: 403 otherwise), URL prefix /admin
 	protected := api.Group("", middleware.Auth(tokens))
+	admin := protected.Group("/admin", middleware.RequireRole(domain.RoleAdmin))
 
-	// users
+	// users (register and login are public)
 	userRepo := postgres.NewUserRepo(queries)
 	userSvc := userusecase.NewService(userRepo, hasher, tokens)
 	userhttp.NewHandler(userSvc).RegisterUserRoutes(api)
 
-	//address
-	addrRepo := postgres.NewAddressRepo(queries)
-	addrUsaCase := address2.NewService(addrRepo)
-	address.NewHandler(addrUsaCase).RegisterAddressRoutes(protected)
+	// addresses (any logged-in user, their own data only)
+	addressRepo := postgres.NewAddressRepo(queries)
+	addressSvc := addressusecase.NewService(addressRepo)
+	addresshttp.NewHandler(addressSvc).RegisterAddressRoutes(protected)
 
-	//product
+	// products (admin only for now)
 	productRepo := postgres.NewProductRepo(queries)
-	productUseCase := product.NewService(productRepo)
-	product2.NewHandler(productUseCase).RegisterProductRoutes(protected)
+	productSvc := productusecase.NewService(productRepo)
+	producthttp.NewHandler(productSvc).RegisterProductRoutes(admin)
 
-	//category
+	// categories (admin only for now)
 	categoryRepo := postgres.NewCategoryRepo(queries)
-	categoryUseCase := category.NewService(categoryRepo)
-	category2.NewHandler(categoryUseCase).RegisterAddressRoutes(protected)
+	categorySvc := categoryusecase.NewService(categoryRepo)
+	categoryhttp.NewHandler(categorySvc).RegisterCategoryRoutes(admin)
 
 	return r
 }
