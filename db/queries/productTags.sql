@@ -1,9 +1,4 @@
 -- Adding a tag that is already there does nothing (safe to repeat).
--- name: AddTagToProductV1 :exec
-INSERT INTO product_tags (product_id, tag_id)
-VALUES (sqlc.arg(product_id), sqlc.arg(tag_id))
-    ON CONFLICT DO NOTHING;
-
 -- name: AddTagsToProduct :exec
 INSERT INTO product_tags (product_id, tag_id)
 SELECT sqlc.arg(product_id)::uuid, unnest(sqlc.arg(tag_ids)::uuid[])

@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
@@ -36,7 +35,6 @@ func (r *AddressRepo) Create(ctx context.Context, u domain.Address) (domain.Addr
 	if err != nil {
 		return domain.Address{}, err
 	}
-	slog.Info("in repo ", row.ID)
 	return toDomainAddress(row), nil
 }
 
@@ -115,6 +113,8 @@ func toDomainAddress(u sqlc.Address) domain.Address {
 		Lat:           u.Lat,
 		Lng:           u.Lng,
 		IsDefault:     u.IsDefault,
+		UpdatedAt:     u.UpdatedAt,
+		CreatedAt:     u.CreatedAt,
 	}
 }
 

@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
@@ -47,7 +46,7 @@ func (r *ProductRepo) Update(ctx context.Context, u domain.Product) (domain.Prod
 	})
 
 	if err != nil {
-		return domain.Product{}, nil
+		return domain.Product{}, err
 	}
 
 	return toDomainProduct(updatedProduct), nil
@@ -77,7 +76,6 @@ func (r *ProductRepo) ListProducts(ctx context.Context, offset int, pageSize int
 	if err != nil {
 		return nil, err
 	}
-	slog.Info("products in repo 1", int32(pageSize), int32(offset))
 	return toDomainProducts(products), nil
 }
 func (r *ProductRepo) ListProductsByCategory(ctx context.Context, categoryID *uuid.UUID, limit, offset int) ([]domain.Product, error) {

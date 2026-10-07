@@ -47,7 +47,7 @@ func (h *Handler) RegisterTagRoutes(r *gin.RouterGroup) {
 	r.GET("/product/:id/tags", h.ListTagsByProduct)
 	r.PUT("/product/:id/tags", h.SetProductTags) // replace the whole set
 	r.DELETE("/product/:id/tags", h.ClearProductTags)
-	r.DELETE("/product/:id/tags/:tag_id", h.RemoveTagFromProduct)
+	r.DELETE("/product/tags/remove", h.RemoveTagFromProduct)
 }
 
 func (h *Handler) Create(c *gin.Context) {

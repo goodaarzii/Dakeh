@@ -27,21 +27,6 @@ func Error(c *gin.Context, status int, code, message string) {
 	c.AbortWithStatusJSON(status, errorBody{Error: errorDetail{Code: code, Message: message}})
 }
 
-func GetTokenFromRequest(r *http.Request) string {
-	tokenAuth := r.Header.Get("Authorization")
-	tokenQuery := r.URL.Query().Get("token")
-
-	if tokenAuth != "" {
-		return tokenAuth
-	}
-
-	if tokenQuery != "" {
-		return tokenQuery
-	}
-
-	return ""
-}
-
 func WriteError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, domain.ErrEmailTaken):
@@ -50,6 +35,10 @@ func WriteError(c *gin.Context, err error) {
 		Error(c, http.StatusConflict, "phone_taken", "phone already registered")
 	case errors.Is(err, domain.ErrNotFound):
 		Error(c, http.StatusNotFound, "not_found", "address not found")
+	case errors.Is(err, domain.ErrInvalidCredentials):
+		Error(c, http.StatusUnauthorized, "Unauthorized", "User is Unauthorized")
+	case errors.Is(err, domain.ErrUserInactive):
+		Error(c, http.StatusForbidden, "InActive", "User is Inactive")
 	default:
 		Error(c, http.StatusInternalServerError, "internal", "something went wrong")
 	}

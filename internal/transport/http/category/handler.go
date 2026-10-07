@@ -123,7 +123,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	deleted, err := h.svc.Delete(context.Background(), id)
+	deleted, err := h.svc.Delete(c.Request.Context(), id)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
 		return

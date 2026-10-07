@@ -75,7 +75,7 @@ func (h *Handler) Create(c *gin.Context) {
 func (h *Handler) GetByID(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
+		response.Error(c, http.StatusBadRequest, "invalid_id", "address not found")
 		return
 	}
 	addr, err := h.svc.GetByID(c.Request.Context(), id, middleware.UserID(c))
@@ -104,7 +104,7 @@ func (h *Handler) GetUserAddresses(c *gin.Context) {
 func (h *Handler) DeleteAddress(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
+		response.Error(c, http.StatusBadRequest, "invalid_id", "address not found")
 		return
 	}
 	deleteAddress, err := h.svc.Delete(c.Request.Context(), id, middleware.UserID(c))
@@ -118,7 +118,7 @@ func (h *Handler) DeleteAddress(c *gin.Context) {
 func (h *Handler) Update(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
+		response.Error(c, http.StatusBadRequest, "invalid_id", "address not found")
 		return
 	}
 	var req addressRequest
@@ -148,6 +148,6 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	response.JSON(c, http.StatusCreated, toAddressResponse(addr))
+	response.JSON(c, http.StatusOK, toAddressResponse(addr))
 
 }

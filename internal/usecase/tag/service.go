@@ -37,7 +37,7 @@ func (s *Service) Create(ctx context.Context, address domain.Tag) (domain.Tag, e
 }
 
 func (s *Service) Update(ctx context.Context, address domain.Tag) (domain.Tag, error) {
-	return s.repo.Create(ctx, address)
+	return s.repo.Update(ctx, address)
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) (int64, error) {

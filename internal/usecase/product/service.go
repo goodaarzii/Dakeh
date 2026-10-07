@@ -2,7 +2,6 @@ package product
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/google/uuid"
@@ -69,7 +68,6 @@ func (s *Service) ListProducts(ctx context.Context, offset int, pageSize int) ([
 	if err != nil {
 		return nil, err
 	}
-	slog.Info("products in usecase", products)
 	return products, nil
 }
 

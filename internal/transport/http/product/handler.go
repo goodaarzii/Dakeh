@@ -2,7 +2,6 @@ package product
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +56,7 @@ func (h *Handler) Create(c *gin.Context) {
 		Slug:        req.Slug,
 		Description: req.Description,
 		Brand:       req.Brand,
-		Status:      domain.ProductStatus(req.Status),
+		Status:      domain.ProductStatusActive,
 	})
 	if err != nil {
 		response.WriteError(c, err)
@@ -167,6 +166,5 @@ func (h *Handler) ListProducts(c *gin.Context) {
 		response.WriteError(c, err)
 		return
 	}
-	slog.Info("products in handler", products)
 	response.JSON(c, http.StatusOK, toProductListResponse(products, page, pageSize))
 }
