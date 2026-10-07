@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	taghttp "github.com/goodaarzii/dakeh/internal/transport/http/tag"
+	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
@@ -17,7 +19,7 @@ import (
 	addressusecase "github.com/goodaarzii/dakeh/internal/usecase/address"
 	categoryusecase "github.com/goodaarzii/dakeh/internal/usecase/category"
 	productusecase "github.com/goodaarzii/dakeh/internal/usecase/product"
-	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
+	tagusecase "github.com/goodaarzii/dakeh/internal/usecase/tag"
 )
 
 // Mount is the composition root: it builds every object and connects them.
@@ -63,6 +65,10 @@ func (a *Application) Mount() http.Handler {
 	categoryRepo := postgres.NewCategoryRepo(queries)
 	categorySvc := categoryusecase.NewService(categoryRepo)
 	categoryhttp.NewHandler(categorySvc).RegisterCategoryRoutes(admin)
+
+	tagRepo := postgres.NewTagRepo(queries)
+	tageUseCase := tagusecase.NewService(tagRepo)
+	taghttp.NewHandler(tageUseCase).RegisterTagRoutes(admin)
 
 	return r
 }

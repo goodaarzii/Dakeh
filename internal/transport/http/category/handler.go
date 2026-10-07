@@ -33,7 +33,7 @@ func NewHandler(svc Service) *Handler {
 
 func (h *Handler) RegisterCategoryRoutes(r *gin.RouterGroup) {
 
-	g := r.Group("/admin/category")
+	g := r.Group("/category")
 	g.POST("", h.Create)
 	g.GET("", h.CategoryList)
 	g.GET("/:id", h.FindByID)

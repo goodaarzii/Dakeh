@@ -11,17 +11,27 @@ import (
 )
 
 type Querier interface {
+	// Adding a tag that is already there does nothing (safe to repeat).
+	AddTagToProductV1(ctx context.Context, arg AddTagToProductV1Params) error
+	AddTagsToProduct(ctx context.Context, arg AddTagsToProductParams) error
 	ClearDefaultAddress(ctx context.Context, userID uuid.UUID) error
+	// Used to replace all tags of a product: clear, then add the new ones, inside one transaction.
+	ClearProductTags(ctx context.Context, productID uuid.UUID) error
 	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
+	CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Fails with a foreign key error (23503) if the category still has products or children.
 	DeleteCategory(ctx context.Context, id uuid.UUID) (int64, error)
+	// Hard delete. ON DELETE CASCADE also removes the tag from every product.
+	DeleteTag(ctx context.Context, id uuid.UUID) (int64, error)
 	GetAddressByID(ctx context.Context, arg GetAddressByIDParams) (Address, error)
 	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
 	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
+	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
+	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	ListAddressesByUser(ctx context.Context, userID uuid.UUID) ([]Address, error)
@@ -29,6 +39,11 @@ type Querier interface {
 	ListCategories(ctx context.Context) ([]Category, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error)
 	ListProductsByCategory(ctx context.Context, arg ListProductsByCategoryParams) ([]Product, error)
+	ListTags(ctx context.Context) ([]Tag, error)
+	ListTagsByProduct(ctx context.Context, productID uuid.UUID) ([]Tag, error)
+	// Tags for many products in ONE query (avoids running one query per product in a list).
+	ListTagsByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ListTagsByProductIDsRow, error)
+	RemoveTagFromProduct(ctx context.Context, arg RemoveTagFromProductParams) (int64, error)
 	SetDefaultAddress(ctx context.Context, arg SetDefaultAddressParams) (int64, error)
 	SoftDeleteAddress(ctx context.Context, arg SoftDeleteAddressParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error)
@@ -36,6 +51,7 @@ type Querier interface {
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
 	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
+	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)
 }
 
 var _ Querier = (*Queries)(nil)

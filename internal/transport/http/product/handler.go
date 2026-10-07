@@ -35,7 +35,7 @@ func NewHandler(svc Service) *Handler {
 
 func (h *Handler) RegisterProductRoutes(r *gin.RouterGroup) {
 
-	g := r.Group("/admin/product")
+	g := r.Group("/product")
 	g.GET("/", h.ListProducts)
 	g.POST("", h.Create)
 	g.GET("/:id", h.GetByID)

@@ -57,6 +57,19 @@ type Product struct {
 	DeletedAt   *time.Time
 }
 
+type ProductTag struct {
+	ProductID uuid.UUID
+	TagID     uuid.UUID
+}
+
+type Tag struct {
+	ID        uuid.UUID
+	Name      string
+	Slug      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type User struct {
 	ID           uuid.UUID
 	Email        string
