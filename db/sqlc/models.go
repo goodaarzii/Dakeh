@@ -42,6 +42,14 @@ type Category struct {
 	UpdatedAt   time.Time
 }
 
+type Inventory struct {
+	VariantID         uuid.UUID
+	QuantityOnHand    int32
+	QuantityReserved  int32
+	LowStockThreshold int32
+	UpdatedAt         time.Time
+}
+
 type Product struct {
 	ID          uuid.UUID
 	CategoryID  uuid.UUID
@@ -60,6 +68,21 @@ type Product struct {
 type ProductTag struct {
 	ProductID uuid.UUID
 	TagID     uuid.UUID
+}
+
+type ProductVariant struct {
+	ID             uuid.UUID
+	ProductID      uuid.UUID
+	Sku            string
+	Name           string
+	Price          int64
+	CompareAtPrice int64
+	Attributes     []byte
+	WeightGrams    int32
+	IsActive       bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      *time.Time
 }
 
 type Tag struct {

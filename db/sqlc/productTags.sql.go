@@ -11,23 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const addTagToProductV1 = `-- name: AddTagToProductV1 :exec
-INSERT INTO product_tags (product_id, tag_id)
-VALUES ($1, $2)
-    ON CONFLICT DO NOTHING
-`
-
-type AddTagToProductV1Params struct {
-	ProductID uuid.UUID
-	TagID     uuid.UUID
-}
-
-// Adding a tag that is already there does nothing (safe to repeat).
-func (q *Queries) AddTagToProductV1(ctx context.Context, arg AddTagToProductV1Params) error {
-	_, err := q.db.Exec(ctx, addTagToProductV1, arg.ProductID, arg.TagID)
-	return err
-}
-
 const addTagsToProduct = `-- name: AddTagsToProduct :exec
 INSERT INTO product_tags (product_id, tag_id)
 SELECT $1::uuid, unnest($2::uuid[])
@@ -39,6 +22,7 @@ type AddTagsToProductParams struct {
 	TagIds    []uuid.UUID
 }
 
+// Adding a tag that is already there does nothing (safe to repeat).
 func (q *Queries) AddTagsToProduct(ctx context.Context, arg AddTagsToProductParams) error {
 	_, err := q.db.Exec(ctx, addTagsToProduct, arg.ProductID, arg.TagIds)
 	return err

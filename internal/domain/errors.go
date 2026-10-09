@@ -10,4 +10,6 @@ var (
 	ErrPhoneTaken         = errors.New("phone already registered")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUserInactive       = errors.New("user is inactive")
+	ErrSKUTaken           = errors.New("sku is taken")
+	ErrInvalidInput       = errors.New("invalid input")
 )

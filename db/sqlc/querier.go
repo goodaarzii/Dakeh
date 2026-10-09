@@ -12,16 +12,21 @@ import (
 
 type Querier interface {
 	// Adding a tag that is already there does nothing (safe to repeat).
-	AddTagToProductV1(ctx context.Context, arg AddTagToProductV1Params) error
 	AddTagsToProduct(ctx context.Context, arg AddTagsToProductParams) error
+	// Add or remove stock: delta +50 = restock, delta -3 = write-off.
+	// Fails with a CHECK error (23514) if the result would be negative or below reserved.
+	AdjustInventory(ctx context.Context, arg AdjustInventoryParams) (Inventory, error)
 	ClearDefaultAddress(ctx context.Context, userID uuid.UUID) error
 	// Used to replace all tags of a product: clear, then add the new ones, inside one transaction.
 	ClearProductTags(ctx context.Context, productID uuid.UUID) error
 	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
+	// Called right after CreateVariant, inside the same transaction.
+	CreateInventory(ctx context.Context, arg CreateInventoryParams) (Inventory, error)
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateVariant(ctx context.Context, arg CreateVariantParams) (ProductVariant, error)
 	// Fails with a foreign key error (23503) if the category still has products or children.
 	DeleteCategory(ctx context.Context, id uuid.UUID) (int64, error)
 	// Hard delete. ON DELETE CASCADE also removes the tag from every product.
@@ -29,29 +34,41 @@ type Querier interface {
 	GetAddressByID(ctx context.Context, arg GetAddressByIDParams) (Address, error)
 	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
 	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
+	GetInventory(ctx context.Context, variantID uuid.UUID) (Inventory, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
 	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
 	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetVariantByID(ctx context.Context, id uuid.UUID) (ProductVariant, error)
 	ListAddressesByUser(ctx context.Context, userID uuid.UUID) ([]Address, error)
 	// Returns every category. The usecase builds the tree from this flat list.
 	ListCategories(ctx context.Context) ([]Category, error)
+	// Stock for many variants in ONE query.
+	ListInventoryByVariantIDs(ctx context.Context, variantIds []uuid.UUID) ([]Inventory, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error)
 	ListProductsByCategory(ctx context.Context, arg ListProductsByCategoryParams) ([]Product, error)
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTagsByProduct(ctx context.Context, productID uuid.UUID) ([]Tag, error)
 	// Tags for many products in ONE query (avoids running one query per product in a list).
 	ListTagsByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ListTagsByProductIDsRow, error)
+	ListVariantsByProduct(ctx context.Context, productID uuid.UUID) ([]ProductVariant, error)
+	// Variants of many products in ONE query (for product lists, avoids one query per product).
+	ListVariantsByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ProductVariant, error)
 	RemoveTagFromProduct(ctx context.Context, arg RemoveTagFromProductParams) (int64, error)
 	SetDefaultAddress(ctx context.Context, arg SetDefaultAddressParams) (int64, error)
+	// Set the absolute quantity. Fails with a CHECK error (23514) if it would go below reserved.
+	SetInventory(ctx context.Context, arg SetInventoryParams) (Inventory, error)
 	SoftDeleteAddress(ctx context.Context, arg SoftDeleteAddressParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error)
+	SoftDeleteVariant(ctx context.Context, id uuid.UUID) (int64, error)
 	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
 	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)
+	// product_id is not updatable: a variant stays with its product.
+	UpdateVariant(ctx context.Context, arg UpdateVariantParams) (ProductVariant, error)
 }
 
 var _ Querier = (*Queries)(nil)

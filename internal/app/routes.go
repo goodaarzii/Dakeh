@@ -16,10 +16,12 @@ import (
 	categoryhttp "github.com/goodaarzii/dakeh/internal/transport/http/category"
 	producthttp "github.com/goodaarzii/dakeh/internal/transport/http/product"
 	userhttp "github.com/goodaarzii/dakeh/internal/transport/http/users"
+	varianthttp "github.com/goodaarzii/dakeh/internal/transport/http/variant"
 	addressusecase "github.com/goodaarzii/dakeh/internal/usecase/address"
 	categoryusecase "github.com/goodaarzii/dakeh/internal/usecase/category"
 	productusecase "github.com/goodaarzii/dakeh/internal/usecase/product"
 	tagusecase "github.com/goodaarzii/dakeh/internal/usecase/tag"
+	variantusecase "github.com/goodaarzii/dakeh/internal/usecase/variant"
 )
 
 // Mount is the composition root: it builds every object and connects them.
@@ -66,9 +68,15 @@ func (a *Application) Mount() http.Handler {
 	categorySvc := categoryusecase.NewService(categoryRepo)
 	categoryhttp.NewHandler(categorySvc).RegisterCategoryRoutes(admin)
 
+	//tag
 	tagRepo := postgres.NewTagRepo(queries)
 	tageUseCase := tagusecase.NewService(tagRepo)
 	taghttp.NewHandler(tageUseCase).RegisterTagRoutes(admin)
 
+	//variant
+	// variants (admin only)
+	variantRepo := postgres.NewVariantRepo(a.DB) // the pool, not queries
+	variantSvc := variantusecase.NewService(variantRepo)
+	varianthttp.NewHandler(variantSvc).RegisterVariantRoutes(admin)
 	return r
 }
