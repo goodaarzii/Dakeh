@@ -12,8 +12,8 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, v domain.Variant, initialStock, lowStockThreshold int) (domain.VariantWithStock, error)
-	Update(ctx context.Context, v domain.Variant) (domain.Variant, error)
-	GetByID(ctx context.Context, id uuid.UUID) (domain.Variant, error)
+	Update(ctx context.Context, v domain.Variant) (domain.VariantWithStock, error)
+	GetByID(ctx context.Context, id uuid.UUID) (domain.VariantWithStock, error)
 	ListByProduct(ctx context.Context, productID uuid.UUID) ([]domain.VariantWithStock, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 
@@ -44,8 +44,11 @@ func (h *Handler) RegisterVariantRoutes(r *gin.RouterGroup) {
 	g.GET("/:id", h.GetByID)
 	g.PUT("/:id", h.Update)
 	g.DELETE("/:id", h.Delete)
+	g.GET("/:id/stock", h.GetStock) // moved here
 	g.PUT("/:id/stock", h.SetStock)
 	g.POST("/:id/stock/adjust", h.AdjustStock)
+
+	r.POST("/stock/query", h.ListStock) // this one has no ID in the URL, so it stays
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -98,47 +101,26 @@ func (h *Handler) Update(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
 		return
 	}
-	stock, err := h.svc.GetStock(c.Request.Context(), update.ID)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
-		return
-	}
-
-	variantWithStock := domain.VariantWithStock{
-		Variant: update,
-		Stock:   stock,
-	}
 
 	// make response for this below
-	response.JSON(c, http.StatusOK, toVariantResponse(variantWithStock))
+	response.JSON(c, http.StatusOK, toVariantResponse(update))
 
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid product id")
+		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid variant id")
 		return
 	}
-	variant, err := h.svc.GetByID(c.Request.Context(), id)
+
+	v, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
-		return
-
-	}
-	stock, err := h.svc.GetStock(c.Request.Context(), variant.ID)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
+		response.WriteError(c, err)
 		return
 	}
 
-	variantWithStock := domain.VariantWithStock{
-		Variant: variant,
-		Stock:   stock,
-	}
-
-	// make response for this below
-	response.JSON(c, http.StatusOK, toVariantResponse(variantWithStock))
+	response.JSON(c, http.StatusOK, toVariantResponse(v))
 }
 
 func (h *Handler) ListByProduct(c *gin.Context) {
@@ -232,4 +214,35 @@ func (h *Handler) AdjustStock(c *gin.Context) {
 	}
 	response.JSON(c, http.StatusOK, toStockResponse(stock))
 
+}
+
+func (h *Handler) GetStock(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid product id")
+		return
+	}
+	variant, err := h.svc.GetStock(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+
+	}
+	response.JSON(c, http.StatusOK, toStockResponse(variant))
+}
+
+func (h *Handler) ListStock(c *gin.Context) {
+	var req listStockRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
+	stocks, err := h.svc.ListStock(c.Request.Context(), req.VariantIDs)
+	if err != nil {
+		response.WriteError(c, err)
+		return
+	}
+
+	response.JSON(c, http.StatusOK, toVariantStockResponses(stocks))
 }

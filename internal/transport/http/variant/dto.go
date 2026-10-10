@@ -122,3 +122,22 @@ func toVariantResponses(list []domain.VariantWithStock) []variantResponse {
 	}
 	return out
 }
+
+// listStockRequest: the variant IDs to look up. Limited to 100 per call.
+type listStockRequest struct {
+	VariantIDs []uuid.UUID `json:"variant_ids" binding:"required,min=1,max=100,dive,required"`
+}
+
+// variantStockResponse is a stock together with the variant it belongs to.
+type variantStockResponse struct {
+	VariantID uuid.UUID `json:"variant_id"`
+	stockResponse
+}
+
+func toVariantStockResponses(list []domain.Inventory) []variantStockResponse {
+	out := make([]variantStockResponse, len(list))
+	for i, inv := range list {
+		out[i] = variantStockResponse{VariantID: inv.VariantID, stockResponse: toStockResponse(inv)}
+	}
+	return out
+}
