@@ -44,3 +44,16 @@ type ProductDetail struct {
 	Variants []VariantWithStock
 	Tags     []Tag
 }
+
+// ProductQuery is what the repository needs for a product list.
+// It is built by the usecase from ProductFilter:
+// slugs become IDs (CategoryIDs), and page numbers become Limit and Offset.
+// Passing one struct (instead of five loose arguments) means you can never mix up two ints or two strings.
+type ProductQuery struct {
+	CategoryIDs []uuid.UUID // empty = no category filter
+	TagSlug     string      // empty = no tag filter
+	Search      string      // empty = no search
+	Sort        ProductSort
+	Limit       int
+	Offset      int
+}

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -20,55 +21,120 @@ func NewCatalogRepo(q sqlc.Querier) *CatalogRepo {
 }
 
 func (r *CatalogRepo) ListActiveCategories(ctx context.Context) ([]domain.Category, error) {
-	categories, err := r.q.ListActiveCategories(ctx)
+	rows, err := r.q.ListActiveCategories(ctx)
 	if err != nil {
 		return nil, mapCatalogErr(err)
 	}
-	return toDomainCategories(categories), nil
-
+	return toDomainCategories(rows), nil
 }
-func (r *CatalogRepo) GetActiveProductBySlug(ctx context.Context, slug string) (domain.Product, error) {
-	bySlug, err := r.q.GetActiveProductBySlug(ctx, slug)
+
+func (r *CatalogRepo) ListActiveVariantsByProduct(ctx context.Context, productID uuid.UUID) ([]domain.Variant, error) {
+	rows, err := r.q.ListActiveVariantsByProduct(ctx, productID)
 	if err != nil {
-		return domain.Product{}, mapCatalogErr(err)
+		return nil, mapCatalogErr(err)
 	}
-	return toDomainProduct(bySlug), nil
-
+	return toDomainVariants(rows)
 }
 
-func (r *CatalogRepo) ListActiveVariantsByProduct(ctx context.Context, id uuid.UUID) ([]domain.Variant, error) {
-	product, err := r.q.ListActiveVariantsByProduct(ctx, id)
-	if err != nil {
-		return []domain.Variant{}, mapCatalogErr(err)
-	}
-
-	return toDomainVariants(product)
-
-}
-
-func (r *CatalogRepo) ListPublicProducts(ctx context.Context, sort, tagSlug, search string, offSet, pageSize int, catIds []uuid.UUID) ([]domain.ProductCard, error) {
+func (r *CatalogRepo) ListPublicProducts(ctx context.Context, q domain.ProductQuery) ([]domain.ProductCard, error) {
 
 	categoryIDs := q.CategoryIDs
 	if categoryIDs == nil {
-		categoryIDs = []uuid.UUID{} // an empty array, not NULL
+		categoryIDs = []uuid.UUID{}
 	}
-	products, err := r.q.ListPublicProducts(ctx, sqlc.ListPublicProductsParams{
-		Sort:        sort,
-		PageOffset:  int32(offSet),
-		PageSize:    int32(pageSize),
-		CategoryIds: catIds,
-		TagSlug:     tagSlug,
-		Search:      search,
+
+	rows, err := r.q.ListPublicProducts(ctx, sqlc.ListPublicProductsParams{
+		CategoryIds: categoryIDs,
+		TagSlug:     q.TagSlug,
+		Search:      q.Search,
+		Sort:        string(q.Sort),
+		PageSize:    int32(q.Limit),
+		PageOffset:  int32(q.Offset),
 	})
 	if err != nil {
-		return []domain.ProductCard{}, mapCatalogErr(err)
+		return nil, mapCatalogErr(err)
 	}
-	return toDomainPublicProducts(products), nil
+	return toDomainPublicProducts(rows), nil
+}
+
+func (r *CatalogRepo) GetTags(ctx context.Context) ([]domain.Tag, error) {
+	tags, err := r.q.ListTags(ctx)
+	if err != nil {
+		return nil, mapCatalogErr(err)
+	}
+	return toDomainTags(tags), nil
+}
+
+func (r *CatalogRepo) GetActiveProductBySlug(ctx context.Context, slug string) (domain.ProductDetail, error) {
+	productBySlug, err := r.q.GetActiveProductBySlug(ctx, slug)
+	if err != nil {
+		return domain.ProductDetail{}, mapCatalogErr(err) // no row -> ErrNotFound -> 404
+	}
+
+	variantsByID, err := r.q.ListVariantsByProduct(ctx, productBySlug.ID)
+	if err != nil {
+		return domain.ProductDetail{}, mapCatalogErr(err)
+	}
+	var variantIDs = make([]uuid.UUID, 0)
+	for _, variant := range variantsByID {
+		variantIDs = append(variantIDs, variant.ID)
+	}
+	stocks, err := r.q.ListInventoryByVariantIDs(ctx, variantIDs)
+	if err != nil {
+		return domain.ProductDetail{}, mapVariantErr(err)
+	}
+	tags, err := r.q.ListTagsByProduct(ctx, productBySlug.ID)
+	if err != nil {
+		return domain.ProductDetail{}, mapVariantErr(err)
+	}
+	categoryByID, err := r.q.GetCategoryByID(ctx, productBySlug.CategoryID)
+	if err != nil {
+		return domain.ProductDetail{}, mapCatalogErr(err)
+	}
+
+	var listVarWithStocks []domain.VariantWithStock
+
+	for index, _ := range stocks {
+		listVarWithStocks = append(listVarWithStocks, domain.VariantWithStock{
+			Variant: toDomainVariantV2(variantsByID[index]),
+			Stock:   toDomainInventory(stocks[index]),
+		})
+	}
+	return domain.ProductDetail{
+		Product:  toDomainProduct(productBySlug),
+		Category: toDomainCategory(categoryByID),
+		Variants: listVarWithStocks,
+		Tags:     toDomainTags(tags),
+	}, nil
+
+}
+
+func toDomainVariantV2(v sqlc.ProductVariant) domain.Variant {
+	attrs := map[string]string{}
+	if len(v.Attributes) > 0 {
+		if err := json.Unmarshal(v.Attributes, &attrs); err != nil {
+			// Fails if someone stored a non-string value (like {"size": 42}) by hand.
+			return domain.Variant{}
+		}
+	}
+
+	return domain.Variant{
+		ID:             v.ID,
+		ProductID:      v.ProductID,
+		SKU:            v.Sku,
+		Name:           v.Name,
+		Price:          v.Price,
+		CompareAtPrice: v.CompareAtPrice,
+		Attributes:     attrs,
+		WeightGrams:    int(v.WeightGrams),
+		IsActive:       v.IsActive,
+		CreatedAt:      v.CreatedAt,
+		UpdatedAt:      v.UpdatedAt,
+	}
 }
 
 func toDomainPublicProducts(rows []sqlc.ListPublicProductsRow) []domain.ProductCard {
 	out := make([]domain.ProductCard, len(rows))
-
 	for i, row := range rows {
 		out[i] = toDomainPublicProduct(row)
 	}
