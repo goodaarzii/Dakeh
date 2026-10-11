@@ -31,6 +31,7 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id uuid.UUID) (int64, error)
 	// Hard delete. ON DELETE CASCADE also removes the tag from every product.
 	DeleteTag(ctx context.Context, id uuid.UUID) (int64, error)
+	GetActiveProductBySlug(ctx context.Context, slug string) (Product, error)
 	GetAddressByID(ctx context.Context, arg GetAddressByIDParams) (Address, error)
 	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
 	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
@@ -41,6 +42,10 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetVariantByID(ctx context.Context, id uuid.UUID) (ProductVariant, error)
+	// Public (customer-facing) reads. Only visible things: active products, active variants, active categories.
+	ListActiveCategories(ctx context.Context) ([]Category, error)
+	// Sellable variants only. (The admin ListVariantsByProduct does not filter on is_active.)
+	ListActiveVariantsByProduct(ctx context.Context, productID uuid.UUID) ([]ProductVariant, error)
 	ListAddressesByUser(ctx context.Context, userID uuid.UUID) ([]Address, error)
 	// Returns every category. The usecase builds the tree from this flat list.
 	ListCategories(ctx context.Context) ([]Category, error)
@@ -48,6 +53,11 @@ type Querier interface {
 	ListInventoryByVariantIDs(ctx context.Context, variantIds []uuid.UUID) ([]Inventory, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error)
 	ListProductsByCategory(ctx context.Context, arg ListProductsByCategoryParams) ([]Product, error)
+	// Product cards for the shop pages. ONE query returns what a card needs:
+	// the lowest variant price ("from $X") and whether anything is in stock.
+	// Empty values mean "no filter": category_ids = '{}', tag_slug = '', search = ''.
+	// sort is 'newest' (default), 'price_asc' or 'price_desc'.
+	ListPublicProducts(ctx context.Context, arg ListPublicProductsParams) ([]ListPublicProductsRow, error)
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTagsByProduct(ctx context.Context, productID uuid.UUID) ([]Tag, error)
 	// Tags for many products in ONE query (avoids running one query per product in a list).

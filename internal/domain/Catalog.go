@@ -1,0 +1,46 @@
+package domain
+
+import "github.com/google/uuid"
+
+// ProductSort is how a product list is ordered.
+type ProductSort string
+
+const (
+	SortNewest    ProductSort = "newest"
+	SortPriceAsc  ProductSort = "price_asc"
+	SortPriceDesc ProductSort = "price_desc"
+)
+
+// ProductFilter is what the shop pages ask for. Empty fields mean "no filter".
+// The usecase turns CategorySlug into a list of category IDs (the category and all its children).
+type ProductFilter struct {
+	CategorySlug string
+	TagSlug      string
+	Search       string
+	Sort         ProductSort
+	Page         int
+	PageSize     int
+}
+
+// ProductCard is the small version of a product, for lists.
+// MinPrice is the lowest price among its sellable variants, in cents ("from $X").
+type ProductCard struct {
+	ID          uuid.UUID
+	CategoryID  uuid.UUID
+	Name        string
+	Slug        string
+	Brand       string
+	MinPrice    int64
+	InStock     bool
+	AvgRating   float64
+	RatingCount int
+}
+
+// ProductDetail is everything the product page needs in ONE response.
+// Variants reuse VariantWithStock: the public DTO turns the stock into in_stock.
+type ProductDetail struct {
+	Product  Product
+	Category Category
+	Variants []VariantWithStock
+	Tags     []Tag
+}
