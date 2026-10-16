@@ -12,6 +12,7 @@ type Config struct {
 	DatabaseURL string
 	JWTSecret   string
 	JWTTTL      time.Duration
+	RefreshTTL  time.Duration
 }
 
 // Load reads every setting in one place and fails at startup if something is unsafe.
@@ -21,6 +22,7 @@ func Load() (Config, error) {
 		DatabaseURL: env.GetString("DATABASE_URL", ""),
 		JWTSecret:   env.GetString("JWTSecret", ""),
 		JWTTTL:      time.Duration(env.GetInt("JWTExpirationInSeconds", 900)) * time.Second,
+		RefreshTTL:  time.Duration(env.GetInt("RefreshExpirationInSeconds", 2592000)) * time.Second,
 	}
 
 	if cfg.DatabaseURL == "" {

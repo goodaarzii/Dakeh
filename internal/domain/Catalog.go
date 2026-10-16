@@ -24,6 +24,7 @@ type ProductFilter struct {
 
 // ProductCard is the small version of a product, for lists.
 // MinPrice is the lowest price among its sellable variants, in cents ("from $X").
+// ImageURL is the primary image, or "" when the product has no image.
 type ProductCard struct {
 	ID          uuid.UUID
 	CategoryID  uuid.UUID
@@ -32,6 +33,7 @@ type ProductCard struct {
 	Brand       string
 	MinPrice    int64
 	InStock     bool
+	ImageURL    string
 	AvgRating   float64
 	RatingCount int
 }
@@ -43,6 +45,7 @@ type ProductDetail struct {
 	Category Category
 	Variants []VariantWithStock
 	Tags     []Tag
+	Images   []ProductImage
 }
 
 // ProductQuery is what the repository needs for a product list.

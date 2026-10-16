@@ -41,7 +41,12 @@ WITH visible AS (
                      JOIN inventory i ON i.variant_id = pv.id
             WHERE pv.product_id = p.id AND pv.is_active AND pv.deleted_at IS NULL
               AND i.quantity_on_hand - i.quantity_reserved > 0
-        ) AS in_stock
+        ) AS in_stock,
+        -- the primary image, or '' when the product has none
+        COALESCE((
+                     SELECT pi.url FROM product_images pi
+                     WHERE pi.product_id = p.id AND pi.is_primary
+                 ), '')::text AS image_url
     FROM products p
     WHERE p.status = 'active'
       AND p.deleted_at IS NULL

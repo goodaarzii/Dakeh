@@ -88,7 +88,7 @@ func toTagResponses(list []domain.Tag) []tagResponse {
 // ---------- product list (cards) ----------
 
 // productCardResponse: prices are in USD cents. The frontend formats them as dollars.
-// An image_url field will be added when product images exist.
+// image_url is "" when the product has no image (the frontend shows a placeholder).
 type productCardResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
@@ -96,6 +96,7 @@ type productCardResponse struct {
 	Brand       string    `json:"brand"`
 	MinPrice    int64     `json:"min_price"` // "from $X"
 	InStock     bool      `json:"in_stock"`
+	ImageURL    string    `json:"image_url"`
 	AvgRating   float64   `json:"avg_rating"`
 	RatingCount int       `json:"rating_count"`
 }
@@ -117,6 +118,7 @@ func toProductListResponse(cards []domain.ProductCard, page, pageSize int, hasMo
 			Brand:       c.Brand,
 			MinPrice:    c.MinPrice,
 			InStock:     c.InStock,
+			ImageURL:    c.ImageURL,
 			AvgRating:   c.AvgRating,
 			RatingCount: c.RatingCount,
 		}
@@ -144,17 +146,26 @@ type variantResponse struct {
 	InStock        bool              `json:"in_stock"`
 }
 
+// publicImageResponse: what a customer needs to show a picture.
+type publicImageResponse struct {
+	URL       string     `json:"url"`
+	AltText   string     `json:"alt_text"`
+	IsPrimary bool       `json:"is_primary"`
+	VariantID *uuid.UUID `json:"variant_id"` // set when the photo shows one specific variant
+}
+
 type productDetailResponse struct {
-	ID          uuid.UUID         `json:"id"`
-	Name        string            `json:"name"`
-	Slug        string            `json:"slug"`
-	Description string            `json:"description"`
-	Brand       string            `json:"brand"`
-	Category    categorySummary   `json:"category"`
-	Tags        []tagResponse     `json:"tags"`
-	Variants    []variantResponse `json:"variants"`
-	AvgRating   float64           `json:"avg_rating"`
-	RatingCount int               `json:"rating_count"`
+	ID          uuid.UUID             `json:"id"`
+	Name        string                `json:"name"`
+	Slug        string                `json:"slug"`
+	Description string                `json:"description"`
+	Brand       string                `json:"brand"`
+	Category    categorySummary       `json:"category"`
+	Tags        []tagResponse         `json:"tags"`
+	Images      []publicImageResponse `json:"images"` // primary first
+	Variants    []variantResponse     `json:"variants"`
+	AvgRating   float64               `json:"avg_rating"`
+	RatingCount int                   `json:"rating_count"`
 }
 
 // toVariantResponse is the customer view of one variant: in_stock, never the quantities.
@@ -182,6 +193,19 @@ func toVariantResponses(list []domain.VariantWithStock) []variantResponse {
 	return out
 }
 
+func toPublicImageResponses(list []domain.ProductImage) []publicImageResponse {
+	out := make([]publicImageResponse, len(list))
+	for i, img := range list {
+		out[i] = publicImageResponse{
+			URL:       img.URL,
+			AltText:   img.AltText,
+			IsPrimary: img.IsPrimary,
+			VariantID: img.VariantID,
+		}
+	}
+	return out
+}
+
 func toProductDetailResponse(d domain.ProductDetail) productDetailResponse {
 	return productDetailResponse{
 		ID:          d.Product.ID,
@@ -191,6 +215,7 @@ func toProductDetailResponse(d domain.ProductDetail) productDetailResponse {
 		Brand:       d.Product.Brand,
 		Category:    categorySummary{ID: d.Category.ID, Name: d.Category.Name, Slug: d.Category.Slug},
 		Tags:        toTagResponses(d.Tags),
+		Images:      toPublicImageResponses(d.Images),
 		Variants:    toVariantResponses(d.Variants),
 		AvgRating:   d.Product.AvgRating,
 		RatingCount: d.Product.RatingCount,

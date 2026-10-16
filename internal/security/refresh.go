@@ -25,3 +25,14 @@ func HashRefreshToken(plain string) string {
 	sum := sha256.Sum256([]byte(plain))
 	return hex.EncodeToString(sum[:])
 }
+
+// The two methods below let *JWTIssuer be the ONE token dependency of the user usecase:
+// it issues access tokens (jwt.go) and creates/hashes refresh tokens (this file).
+
+func (j *JWTIssuer) NewRefreshToken() (plain, hash string, err error) {
+	return NewRefreshToken()
+}
+
+func (j *JWTIssuer) HashRefreshToken(plain string) string {
+	return HashRefreshToken(plain)
+}

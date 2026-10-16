@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -59,15 +58,6 @@ func (r *UserRepo) UpdateLastLogin(ctx context.Context, id uuid.UUID) error {
 		return mapUserErr(err)
 	}
 	return nil
-}
-
-func (r *UserRepo) Refresh(ctx context.Context, id uuid.UUID) error {
-	r.q.CreateRefreshToken(ctx, sqlc.CreateRefreshTokenParams{
-		UserID:    uuid.UUID{},
-		TokenHash: "",
-		UserAgent: "",
-		ExpiresAt: time.Time{},
-	})
 }
 
 // toDomainUser converts the generated sqlc struct to the domain entity.

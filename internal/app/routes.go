@@ -52,8 +52,12 @@ func (a *Application) Mount() http.Handler {
 
 	// users (register and login are public)
 	userRepo := postgres.NewUserRepo(queries)
-	userSvc := userusecase.NewService(userRepo, hasher, tokens)
-	userhttp.NewHandler(userSvc).RegisterUserRoutes(api)
+	refreshRepo := postgres.NewRefreshTokenRepo(a.DB)
+	userSvc := userusecase.NewService(userRepo, refreshRepo, hasher, tokens,
+		userusecase.Config{AccessTTL: a.Config.JWTTTL, RefreshTTL: a.Config.RefreshTTL})
+	userHandler := userhttp.NewHandler(userSvc)
+	userHandler.RegisterUserRoutes(api)                // register, login, refresh, logout
+	userHandler.RegisterUserProtectedRoutes(protected) // logout-all, /users/me
 
 	// addresses (any logged-in user, their own data only)
 	addressRepo := postgres.NewAddressRepo(queries)
