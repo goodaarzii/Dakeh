@@ -28,6 +28,7 @@ func (h *Handler) RegisterUserRoutes(r *gin.RouterGroup) {
 	auth := r.Group("/auth")
 	auth.POST("/register", h.Register)
 	auth.POST("/login", h.Login)
+	auth.POST("/login", h.refresh)
 }
 
 func (h *Handler) Register(c *gin.Context) {

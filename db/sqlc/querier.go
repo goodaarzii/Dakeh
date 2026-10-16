@@ -24,11 +24,14 @@ type Querier interface {
 	// Called right after CreateVariant, inside the same transaction.
 	CreateInventory(ctx context.Context, arg CreateInventoryParams) (Inventory, error)
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
+	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateVariant(ctx context.Context, arg CreateVariantParams) (ProductVariant, error)
 	// Fails with a foreign key error (23503) if the category still has products or children.
 	DeleteCategory(ctx context.Context, id uuid.UUID) (int64, error)
+	// For a cleanup job later: tokens that expired more than 7 days ago are useless.
+	DeleteOldRefreshTokens(ctx context.Context) (int64, error)
 	// Hard delete. ON DELETE CASCADE also removes the tag from every product.
 	DeleteTag(ctx context.Context, id uuid.UUID) (int64, error)
 	GetActiveProductBySlug(ctx context.Context, slug string) (Product, error)
@@ -37,6 +40,7 @@ type Querier interface {
 	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
 	GetInventory(ctx context.Context, variantID uuid.UUID) (Inventory, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
+	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
 	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -71,6 +75,13 @@ type Querier interface {
 	// Variants of many products in ONE query (for product lists, avoids one query per product).
 	ListVariantsByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ProductVariant, error)
 	RemoveTagFromProduct(ctx context.Context, arg RemoveTagFromProductParams) (int64, error)
+	// Log out everywhere Also the reaction to token REUSE (see the notes).
+	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
+	// Revoke ONE token, but only if it is still valid.
+	// 0 rows means someone already used it (a race between two requests, or a replay): treat it as invalid.
+	RevokeRefreshToken(ctx context.Context, id uuid.UUID) (int64, error)
+	// Logout. 0 rows is fine (already revoked or unknown): logout stays idempotent.
+	RevokeRefreshTokenByHash(ctx context.Context, tokenHash string) (int64, error)
 	SetDefaultAddress(ctx context.Context, arg SetDefaultAddressParams) (int64, error)
 	// Set the absolute quantity. Fails with a CHECK error (23514) if it would go below reserved.
 	SetInventory(ctx context.Context, arg SetInventoryParams) (Inventory, error)

@@ -85,6 +85,16 @@ type ProductVariant struct {
 	DeletedAt      *time.Time
 }
 
+type RefreshToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash string
+	UserAgent string
+	ExpiresAt time.Time
+	RevokedAt *time.Time
+	CreatedAt time.Time
+}
+
 type Tag struct {
 	ID        uuid.UUID
 	Name      string
