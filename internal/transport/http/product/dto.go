@@ -43,8 +43,8 @@ type listQuery struct {
 	CategoryID string `form:"category_id" binding:"omitempty,uuid"`
 }
 
-// paging applies the defaults: page 1, 20 items per page.
-func (q listQuery) paging() (page, pageSize int) {
+// paging applies the defaults (page 1, 20 items) and converts the page number to the SQL offset.
+func (q listQuery) paging() (page, pageSize, offset int) {
 	page, pageSize = q.Page, q.PageSize
 	if page == 0 {
 		page = 1
@@ -52,7 +52,8 @@ func (q listQuery) paging() (page, pageSize int) {
 	if pageSize == 0 {
 		pageSize = 20
 	}
-	return page, pageSize
+	offset = (page - 1) * pageSize
+	return page, pageSize, offset
 }
 
 type productResponse struct {

@@ -72,7 +72,7 @@ func toCategoryResponse(c domain.Category) categoryResponse {
 	}
 }
 
-func toCategoryResponses(list []domain.Category) []categoryResponse {
+func ToCategoryResponses(list []domain.Category) []categoryResponse {
 	out := make([]categoryResponse, len(list))
 	for i, c := range list {
 		out[i] = toCategoryResponse(c)

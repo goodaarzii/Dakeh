@@ -46,6 +46,11 @@ type Querier interface {
 	ListActiveCategories(ctx context.Context) ([]Category, error)
 	// Sellable variants only. (The admin ListVariantsByProduct does not filter on is_active.)
 	ListActiveVariantsByProduct(ctx context.Context, productID uuid.UUID) ([]ProductVariant, error)
+	// Sellable variants WITH their stock in ONE query.
+	// variant -> inventory is 1:1, so this JOIN never repeats a variant (one row per variant).
+	// LEFT JOIN + COALESCE: a variant with no inventory row still appears, with stock 0.
+	// sqlc.embed(pv) keeps the whole variant as one struct, so toDomainVariant can be reused.
+	ListActiveVariantsWithStock(ctx context.Context, productID uuid.UUID) ([]ListActiveVariantsWithStockRow, error)
 	ListAddressesByUser(ctx context.Context, userID uuid.UUID) ([]Address, error)
 	// Returns every category. The usecase builds the tree from this flat list.
 	ListCategories(ctx context.Context) ([]Category, error)

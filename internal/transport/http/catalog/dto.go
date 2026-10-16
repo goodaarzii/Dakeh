@@ -157,24 +157,32 @@ type productDetailResponse struct {
 	RatingCount int               `json:"rating_count"`
 }
 
-func toProductDetailResponse(d domain.ProductDetail) productDetailResponse {
-	variants := make([]variantResponse, len(d.Variants))
-	for i, v := range d.Variants {
-		attrs := v.Variant.Attributes
-		if attrs == nil {
-			attrs = map[string]string{} // {} and never null
-		}
-		variants[i] = variantResponse{
-			ID:             v.Variant.ID,
-			SKU:            v.Variant.SKU,
-			Name:           v.Variant.Name,
-			Price:          v.Variant.Price,
-			CompareAtPrice: v.Variant.CompareAtPrice,
-			Attributes:     attrs,
-			InStock:        v.Stock.Available() > 0,
-		}
+// toVariantResponse is the customer view of one variant: in_stock, never the quantities.
+func toVariantResponse(v domain.VariantWithStock) variantResponse {
+	attrs := v.Variant.Attributes
+	if attrs == nil {
+		attrs = map[string]string{} // {} and never null
 	}
+	return variantResponse{
+		ID:             v.Variant.ID,
+		SKU:            v.Variant.SKU,
+		Name:           v.Variant.Name,
+		Price:          v.Variant.Price,
+		CompareAtPrice: v.Variant.CompareAtPrice,
+		Attributes:     attrs,
+		InStock:        v.Stock.Available() > 0,
+	}
+}
 
+func toVariantResponses(list []domain.VariantWithStock) []variantResponse {
+	out := make([]variantResponse, len(list))
+	for i, v := range list {
+		out[i] = toVariantResponse(v)
+	}
+	return out
+}
+
+func toProductDetailResponse(d domain.ProductDetail) productDetailResponse {
 	return productDetailResponse{
 		ID:          d.Product.ID,
 		Name:        d.Product.Name,
@@ -183,7 +191,7 @@ func toProductDetailResponse(d domain.ProductDetail) productDetailResponse {
 		Brand:       d.Product.Brand,
 		Category:    categorySummary{ID: d.Category.ID, Name: d.Category.Name, Slug: d.Category.Slug},
 		Tags:        toTagResponses(d.Tags),
-		Variants:    variants,
+		Variants:    toVariantResponses(d.Variants),
 		AvgRating:   d.Product.AvgRating,
 		RatingCount: d.Product.RatingCount,
 	}

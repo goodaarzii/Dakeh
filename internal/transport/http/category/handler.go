@@ -72,7 +72,7 @@ func (h *Handler) CategoryList(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
 		return
 	}
-	response.JSON(c, http.StatusOK, toCategoryResponses(list))
+	response.JSON(c, http.StatusOK, ToCategoryResponses(list))
 }
 
 func (h *Handler) FindByID(c *gin.Context) {

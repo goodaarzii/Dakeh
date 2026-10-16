@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/goodaarzii/dakeh/internal/transport/http/catalog"
 	taghttp "github.com/goodaarzii/dakeh/internal/transport/http/tag"
+	catalogUsecase "github.com/goodaarzii/dakeh/internal/usecase/catalog"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
@@ -78,5 +80,11 @@ func (a *Application) Mount() http.Handler {
 	variantRepo := postgres.NewVariantRepo(a.DB) // the pool, not queries
 	variantSvc := variantusecase.NewService(variantRepo)
 	varianthttp.NewHandler(variantSvc).RegisterVariantRoutes(admin)
+
+	//catalog
+	catalogRepo := postgres.NewCatalogRepo(queries)
+	catalogSvc := catalogUsecase.NewService(catalogRepo)
+	catalog.NewHandler(catalogSvc).RegisterCatalogRoutes(api)
+
 	return r
 }

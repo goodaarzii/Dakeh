@@ -116,6 +116,65 @@ func (q *Queries) ListActiveVariantsByProduct(ctx context.Context, productID uui
 	return items, nil
 }
 
+const listActiveVariantsWithStock = `-- name: ListActiveVariantsWithStock :many
+SELECT
+    pv.id, pv.product_id, pv.sku, pv.name, pv.price, pv.compare_at_price, pv.attributes, pv.weight_grams, pv.is_active, pv.created_at, pv.updated_at, pv.deleted_at,
+    COALESCE(i.quantity_on_hand, 0)::int    AS quantity_on_hand,
+    COALESCE(i.quantity_reserved, 0)::int   AS quantity_reserved,
+    COALESCE(i.low_stock_threshold, 0)::int AS low_stock_threshold
+FROM product_variants pv
+         LEFT JOIN inventory i ON i.variant_id = pv.id
+WHERE pv.product_id = $1 AND pv.is_active AND pv.deleted_at IS NULL
+ORDER BY pv.created_at, pv.id
+`
+
+type ListActiveVariantsWithStockRow struct {
+	ProductVariant    ProductVariant
+	QuantityOnHand    int32
+	QuantityReserved  int32
+	LowStockThreshold int32
+}
+
+// Sellable variants WITH their stock in ONE query.
+// variant -> inventory is 1:1, so this JOIN never repeats a variant (one row per variant).
+// LEFT JOIN + COALESCE: a variant with no inventory row still appears, with stock 0.
+// sqlc.embed(pv) keeps the whole variant as one struct, so toDomainVariant can be reused.
+func (q *Queries) ListActiveVariantsWithStock(ctx context.Context, productID uuid.UUID) ([]ListActiveVariantsWithStockRow, error) {
+	rows, err := q.db.Query(ctx, listActiveVariantsWithStock, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListActiveVariantsWithStockRow{}
+	for rows.Next() {
+		var i ListActiveVariantsWithStockRow
+		if err := rows.Scan(
+			&i.ProductVariant.ID,
+			&i.ProductVariant.ProductID,
+			&i.ProductVariant.Sku,
+			&i.ProductVariant.Name,
+			&i.ProductVariant.Price,
+			&i.ProductVariant.CompareAtPrice,
+			&i.ProductVariant.Attributes,
+			&i.ProductVariant.WeightGrams,
+			&i.ProductVariant.IsActive,
+			&i.ProductVariant.CreatedAt,
+			&i.ProductVariant.UpdatedAt,
+			&i.ProductVariant.DeletedAt,
+			&i.QuantityOnHand,
+			&i.QuantityReserved,
+			&i.LowStockThreshold,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublicProducts = `-- name: ListPublicProducts :many
 WITH visible AS (
     SELECT

@@ -65,3 +65,18 @@ ORDER BY
     CASE WHEN sqlc.arg(sort)::text = 'price_desc' THEN min_price END DESC,
     created_at DESC, id DESC
     LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
+-- Sellable variants WITH their stock in ONE query.
+-- variant -> inventory is 1:1, so this JOIN never repeats a variant (one row per variant).
+-- LEFT JOIN + COALESCE: a variant with no inventory row still appears, with stock 0.
+-- sqlc.embed(pv) keeps the whole variant as one struct, so toDomainVariant can be reused.
+-- name: ListActiveVariantsWithStock :many
+SELECT
+    sqlc.embed(pv),
+    COALESCE(i.quantity_on_hand, 0)::int    AS quantity_on_hand,
+    COALESCE(i.quantity_reserved, 0)::int   AS quantity_reserved,
+    COALESCE(i.low_stock_threshold, 0)::int AS low_stock_threshold
+FROM product_variants pv
+         LEFT JOIN inventory i ON i.variant_id = pv.id
+WHERE pv.product_id = $1 AND pv.is_active AND pv.deleted_at IS NULL
+ORDER BY pv.created_at, pv.id;

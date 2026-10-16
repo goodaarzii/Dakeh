@@ -133,7 +133,7 @@ func (h *Handler) ListProductsByCategory(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	page, pageSize := q.paging()
+	page, pageSize, _ := q.paging()
 
 	var categoryID *uuid.UUID
 	if q.CategoryID != "" {
@@ -159,12 +159,13 @@ func (h *Handler) ListProducts(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	page, pageSize := q.paging()
+	page, pageSize, offset := q.paging()
 
-	products, err := h.svc.ListProducts(c.Request.Context(), page, pageSize)
+	products, err := h.svc.ListProducts(c.Request.Context(), offset, pageSize) // offset first, then size
 	if err != nil {
 		response.WriteError(c, err)
 		return
 	}
 	response.JSON(c, http.StatusOK, toProductListResponse(products, page, pageSize))
+
 }
