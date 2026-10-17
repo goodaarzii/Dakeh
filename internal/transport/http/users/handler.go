@@ -134,7 +134,8 @@ func (h *Handler) LogoutAll(c *gin.Context) {
 		response.WriteError(c, err)
 		return
 	}
-	c.Status(http.StatusNoContent)
+	response.JSON(c, http.StatusOK, response.NewStatusResponse(1))
+
 }
 
 // Me returns the logged-in user. The ID comes from the token (set by the Auth middleware).

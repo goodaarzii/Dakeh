@@ -68,7 +68,7 @@ type productResponse struct {
 	RatingCount int       `json:"rating_count"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	// Variants and images will be added here when those features exist.
+	// Variants and image will be added here when those features exist.
 }
 
 type productListResponse struct {

@@ -65,6 +65,18 @@ type Product struct {
 	DeletedAt   *time.Time
 }
 
+type ProductImage struct {
+	ID         uuid.UUID
+	ProductID  uuid.UUID
+	VariantID  *uuid.UUID
+	StorageKey string
+	Url        string
+	AltText    string
+	SortOrder  int32
+	IsPrimary  bool
+	CreatedAt  time.Time
+}
+
 type ProductTag struct {
 	ProductID uuid.UUID
 	TagID     uuid.UUID

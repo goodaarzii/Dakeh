@@ -197,7 +197,12 @@ WITH visible AS (
                      JOIN inventory i ON i.variant_id = pv.id
             WHERE pv.product_id = p.id AND pv.is_active AND pv.deleted_at IS NULL
               AND i.quantity_on_hand - i.quantity_reserved > 0
-        ) AS in_stock
+        ) AS in_stock,
+        -- the primary image, or '' when the product has none
+        COALESCE((
+                     SELECT pi.url FROM product_images pi
+                     WHERE pi.product_id = p.id AND pi.is_primary
+                 ), '')::text AS image_url
     FROM products p
     WHERE p.status = 'active'
       AND p.deleted_at IS NULL
@@ -215,7 +220,7 @@ WITH visible AS (
       ))
       AND ($6::text = '' OR p.name ILIKE '%' || $6::text || '%')
 )
-SELECT id, category_id, name, slug, brand, avg_rating, rating_count, created_at, min_price, in_stock FROM visible
+SELECT id, category_id, name, slug, brand, avg_rating, rating_count, created_at, min_price, in_stock, image_url FROM visible
 ORDER BY
     CASE WHEN $1::text = 'price_asc'  THEN min_price END ASC,
     CASE WHEN $1::text = 'price_desc' THEN min_price END DESC,
@@ -243,6 +248,7 @@ type ListPublicProductsRow struct {
 	CreatedAt   time.Time
 	MinPrice    int64
 	InStock     bool
+	ImageUrl    string
 }
 
 // Product cards for the shop pages. ONE query returns what a card needs:
@@ -276,6 +282,7 @@ func (q *Queries) ListPublicProducts(ctx context.Context, arg ListPublicProducts
 			&i.CreatedAt,
 			&i.MinPrice,
 			&i.InStock,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}

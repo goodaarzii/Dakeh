@@ -12,7 +12,7 @@ erDiagram
     CATEGORIES ||--o{ CATEGORIES : "parent of"
     CATEGORIES ||--o{ PRODUCTS : contains
     PRODUCTS ||--|{ PRODUCT_VARIANTS : "has variants"
-    PRODUCTS ||--o{ PRODUCT_IMAGES : "has images"
+    PRODUCTS ||--o{ PRODUCT_IMAGES : "has image"
     PRODUCT_VARIANTS |o--o{ PRODUCT_IMAGES : "shown in"
     PRODUCTS ||--o{ PRODUCT_TAGS : "tagged with"
     TAGS ||--o{ PRODUCT_TAGS : "used by"

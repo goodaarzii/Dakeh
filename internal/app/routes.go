@@ -5,8 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/goodaarzii/dakeh/internal/transport/http/catalog"
+	"github.com/goodaarzii/dakeh/internal/transport/http/image"
 	taghttp "github.com/goodaarzii/dakeh/internal/transport/http/tag"
 	catalogUsecase "github.com/goodaarzii/dakeh/internal/usecase/catalog"
+	imageusecase "github.com/goodaarzii/dakeh/internal/usecase/image"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
@@ -89,6 +91,11 @@ func (a *Application) Mount() http.Handler {
 	catalogRepo := postgres.NewCatalogRepo(queries)
 	catalogSvc := catalogUsecase.NewService(catalogRepo)
 	catalog.NewHandler(catalogSvc).RegisterCatalogRoutes(api)
+
+	//images
+	imageRepo := postgres.NewImageRepo(a.DB)
+	imageSvc := imageusecase.NewService(imageRepo, a.store)
+	image.NewHandler(imageSvc).RegisterImageRoutes(admin)
 
 	return r
 }

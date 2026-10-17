@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/goodaarzii/dakeh/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/goodaarzii/dakeh/internal/config"
@@ -15,10 +16,11 @@ import (
 type Application struct {
 	Config config.Config
 	DB     *pgxpool.Pool
+	store  *storage.MinioStorage
 }
 
-func New(cfg config.Config, db *pgxpool.Pool) *Application {
-	return &Application{Config: cfg, DB: db}
+func New(cfg config.Config, db *pgxpool.Pool, store *storage.MinioStorage) *Application {
+	return &Application{Config: cfg, DB: db, store: store}
 }
 
 // Run starts the server and shuts down gracefully when ctx is cancelled (Ctrl+C / SIGTERM).

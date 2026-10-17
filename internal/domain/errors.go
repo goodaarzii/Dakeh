@@ -13,4 +13,7 @@ var (
 	ErrSKUTaken            = errors.New("sku is taken")
 	ErrInvalidInput        = errors.New("invalid input")
 	ErrInvalidRefreshToken = errors.New("user token expired")
+	ErrTooManyImages       = errors.New("too many images for this product") // 409 too_many_images
+	ErrUnsupportedImage    = errors.New("unsupported image type")           // 415 unsupported_image_type
+	ErrImageTooLarge       = errors.New("image is too large")
 )

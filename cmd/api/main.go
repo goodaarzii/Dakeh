@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/goodaarzii/dakeh/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
@@ -33,6 +35,16 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	store, err := storage.NewMinioStorage(storage.Config{
+		Endpoint: cfg.S3Endpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey,
+		Bucket: cfg.S3Bucket, UseSSL: cfg.S3UseSSL, PublicBaseURL: cfg.S3PublicBaseURL,
+	})
+	if err != nil {
+		return err
+	}
+	if err := store.EnsureBucket(ctx); err != nil {
+		return fmt.Errorf("storage: %w", err)
+	}
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -44,5 +56,5 @@ func run() error {
 		return err
 	}
 
-	return app.New(cfg, pool).Run(ctx)
+	return app.New(cfg, pool, store).Run(ctx)
 }
