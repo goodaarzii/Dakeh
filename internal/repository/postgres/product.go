@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type ProductRepo struct {
@@ -27,7 +29,7 @@ func (r *ProductRepo) Create(ctx context.Context, u domain.Product) (domain.Prod
 		Status:      string(domain.ProductStatus(u.Status)),
 	})
 	if err != nil {
-		return domain.Product{}, err
+		return domain.Product{}, mapProductErr(err)
 	}
 
 	return toDomainProduct(product), nil
@@ -46,7 +48,7 @@ func (r *ProductRepo) Update(ctx context.Context, u domain.Product) (domain.Prod
 	})
 
 	if err != nil {
-		return domain.Product{}, err
+		return domain.Product{}, mapProductErr(err)
 	}
 
 	return toDomainProduct(updatedProduct), nil
@@ -56,7 +58,7 @@ func (r *ProductRepo) GetByID(ctx context.Context, id uuid.UUID) (domain.Product
 
 	productByID, err := r.q.GetProductByID(ctx, id)
 	if err != nil {
-		return domain.Product{}, err
+		return domain.Product{}, mapProductErr(err)
 	}
 
 	return toDomainProduct(productByID), nil
@@ -66,7 +68,7 @@ func (r *ProductRepo) GetByID(ctx context.Context, id uuid.UUID) (domain.Product
 func (r *ProductRepo) Delete(ctx context.Context, uuid2 uuid.UUID) (int64, error) {
 	result, err := r.q.SoftDeleteProduct(ctx, uuid2)
 	if err != nil {
-		return -1, err
+		return -1, mapProductErr(err)
 	}
 	return result, err
 }
@@ -74,7 +76,7 @@ func (r *ProductRepo) Delete(ctx context.Context, uuid2 uuid.UUID) (int64, error
 func (r *ProductRepo) ListProducts(ctx context.Context, offset int, pageSize int) ([]domain.Product, error) {
 	products, err := r.q.ListProducts(ctx, sqlc.ListProductsParams{PageOffset: int32(offset), PageSize: int32(pageSize)})
 	if err != nil {
-		return nil, err
+		return nil, mapProductErr(err)
 	}
 	return toDomainProducts(products), nil
 }
@@ -85,7 +87,7 @@ func (r *ProductRepo) ListProductsByCategory(ctx context.Context, categoryID *uu
 		PageOffset: int32(offset),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("product repo: list: %w", err)
+		return nil, fmt.Errorf("product repo: list: %w", mapProductErr(err))
 	}
 	return toDomainProducts(rows), nil
 }
@@ -112,4 +114,25 @@ func toDomainProducts(rows []sqlc.Product) []domain.Product {
 		out[i] = toDomainProduct(row)
 	}
 	return out
+}
+func mapProductErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrNotFound
+	}
+	switch code, constraint := pgConstraint(err); code {
+	case pgUniqueViolation:
+		if constraint == "uq_products_slug" {
+			return domain.ErrSlugTaken
+		}
+	case pgForeignKeyViolation:
+		if constraint == "products_category_id_fkey" {
+			return domain.ErrInvalidInput // the category does not exist
+		}
+	case pgCheckViolation:
+		return domain.ErrInvalidInput // for example a status that is not draft, active or archived
+	}
+	return fmt.Errorf("product repo: %w", err)
 }

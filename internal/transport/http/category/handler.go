@@ -45,11 +45,11 @@ func (h *Handler) Create(c *gin.Context) {
 	//IsActive must be in request
 	var req categoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
-	category, err := h.svc.Create(context.Background(), domain.Category{
+	category, err := h.svc.Create(c.Request.Context(), domain.Category{
 		ParentID:    req.ParentID,
 		Name:        req.Name,
 		Slug:        req.Slug,
@@ -59,7 +59,7 @@ func (h *Handler) Create(c *gin.Context) {
 		IsActive:    *req.IsActive,
 	})
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
+		response.WriteError(c, err)
 		return
 	}
 	response.JSON(c, http.StatusOK, toCategoryResponse(category))
@@ -78,7 +78,7 @@ func (h *Handler) CategoryList(c *gin.Context) {
 func (h *Handler) FindByID(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 	category, err := h.svc.FindByID(c, id)
@@ -92,15 +92,15 @@ func (h *Handler) FindByID(c *gin.Context) {
 func (h *Handler) Update(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 	var request categoryRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
-	category, err := h.svc.Update(context.Background(), domain.Category{
+	category, err := h.svc.Update(c.Request.Context(), domain.Category{
 		ID:          id,
 		ParentID:    request.ParentID,
 		Name:        request.Name,
@@ -120,7 +120,7 @@ func (h *Handler) Update(c *gin.Context) {
 func (h *Handler) Delete(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 	deleted, err := h.svc.Delete(c.Request.Context(), id)
@@ -128,7 +128,11 @@ func (h *Handler) Delete(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
 		return
 	}
+	status := http.StatusOK
+	if deleted == 0 {
+		status = http.StatusNotFound
+	}
 
-	response.JSON(c, http.StatusOK, response.NewStatusResponse(deleted))
+	response.JSON(c, status, response.NewStatusResponse(deleted))
 
 }

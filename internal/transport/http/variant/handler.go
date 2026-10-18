@@ -62,7 +62,7 @@ func (h *Handler) Create(c *gin.Context) {
 	// 2. JSON body -> request struct (validation runs here)
 	var req createVariantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -89,7 +89,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 	var req variantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 	v := req.toDomain() // handles IsActive (defaults to true) and nil attributes
@@ -182,7 +182,7 @@ func (h *Handler) SetStock(c *gin.Context) {
 
 	var req setStockRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -204,7 +204,7 @@ func (h *Handler) AdjustStock(c *gin.Context) {
 
 	var req adjustStockRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 	stock, err := h.svc.AdjustStock(c.Request.Context(), id, req.Delta)
@@ -234,7 +234,7 @@ func (h *Handler) GetStock(c *gin.Context) {
 func (h *Handler) ListStock(c *gin.Context) {
 	var req listStockRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 

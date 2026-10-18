@@ -63,7 +63,7 @@ func (h *Handler) SetQuantity(c *gin.Context) {
 
 	var req setQuantityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *Handler) Clear(c *gin.Context) {
 func (h *Handler) Merge(c *gin.Context) {
 	var req mergeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 

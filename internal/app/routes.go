@@ -43,7 +43,7 @@ func (a *Application) Mount() http.Handler {
 	api := r.Group("/api/v1")
 
 	queries := sqlc.New(a.DB)
-
+	r.Use(gin.Logger(), gin.Recovery(), middleware.CORS(a.Config.CORSOrigins))
 	// shared helpers
 	hasher := security.NewBcryptHasher()
 	tokens := security.NewJWTIssuer(a.Config.JWTSecret, a.Config.JWTTTL)

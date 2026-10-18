@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type TagRepo struct {
@@ -22,7 +25,7 @@ func (t *TagRepo) Create(ctx context.Context, tag domain.Tag) (domain.Tag, error
 		Slug: tag.Slug,
 	})
 	if err != nil {
-		return domain.Tag{}, err
+		return domain.Tag{}, mapTagErr(err)
 	}
 	return toDomainTag(createTag), nil
 }
@@ -33,7 +36,7 @@ func (t *TagRepo) Update(ctx context.Context, tag domain.Tag) (domain.Tag, error
 		Slug: tag.Slug,
 	})
 	if err != nil {
-		return domain.Tag{}, nil
+		return domain.Tag{}, mapTagErr(err)
 	}
 	return toDomainTag(updated), nil
 }
@@ -41,7 +44,7 @@ func (t *TagRepo) Update(ctx context.Context, tag domain.Tag) (domain.Tag, error
 func (t *TagRepo) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
 	tag, err := t.q.DeleteTag(ctx, id)
 	if err != nil {
-		return -1, err
+		return -1, mapTagErr(err)
 	}
 	return tag, err
 }
@@ -49,7 +52,7 @@ func (t *TagRepo) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
 func (t *TagRepo) GetByID(ctx context.Context, id uuid.UUID) (domain.Tag, error) {
 	tagByID, err := t.q.GetTagByID(ctx, id)
 	if err != nil {
-		return domain.Tag{}, err
+		return domain.Tag{}, mapTagErr(err)
 	}
 	return toDomainTag(tagByID), nil
 }
@@ -57,11 +60,11 @@ func (t *TagRepo) GetByID(ctx context.Context, id uuid.UUID) (domain.Tag, error)
 func (t *TagRepo) AddTagToProduct(ctx context.Context, productID uuid.UUID, tagIDs []uuid.UUID) error {
 
 	if err := t.ClearProductTags(ctx, productID); err != nil {
-		return err
+		return mapTagErr(err)
 	}
 	if len(tagIDs) > 0 {
 		if err := t.q.AddTagsToProduct(ctx, sqlc.AddTagsToProductParams{ProductID: productID, TagIds: tagIDs}); err != nil {
-			return err
+			return mapTagErr(err)
 		}
 	}
 	return nil
@@ -70,7 +73,7 @@ func (t *TagRepo) AddTagToProduct(ctx context.Context, productID uuid.UUID, tagI
 func (t *TagRepo) ClearProductTags(ctx context.Context, productsID uuid.UUID) error {
 	err := t.q.ClearProductTags(ctx, productsID)
 	if err != nil {
-		return err
+		return mapTagErr(err)
 	}
 	return nil
 }
@@ -78,7 +81,7 @@ func (t *TagRepo) ClearProductTags(ctx context.Context, productsID uuid.UUID) er
 func (t *TagRepo) ListTags(ctx context.Context) ([]domain.Tag, error) {
 	tags, err := t.q.ListTags(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapTagErr(err)
 	}
 	return toDomainTags(tags), nil
 }
@@ -86,7 +89,7 @@ func (t *TagRepo) ListTags(ctx context.Context) ([]domain.Tag, error) {
 func (t *TagRepo) ListTagsByProduct(ctx context.Context, productsIDs uuid.UUID) ([]domain.Tag, error) {
 	listTagsByProduct, err := t.q.ListTagsByProduct(ctx, productsIDs)
 	if err != nil {
-		return nil, err
+		return nil, mapTagErr(err)
 	}
 	return toDomainTags(listTagsByProduct), nil
 }
@@ -97,7 +100,7 @@ func (t *TagRepo) RemoveTagFromProduct(ctx context.Context, productsID uuid.UUID
 		TagID:     tagID,
 	})
 	if err != nil {
-		return -1, err
+		return -1, mapTagErr(err)
 	}
 	return isRemoved, nil
 }
@@ -118,4 +121,26 @@ func toDomainTags(rows []sqlc.Tag) []domain.Tag {
 		out[i] = toDomainTag(row)
 	}
 	return out
+}
+func mapTagErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrNotFound
+	}
+	switch code, constraint := pgConstraint(err); code {
+	case pgUniqueViolation:
+		if constraint == "tags_name_key" || constraint == "tags_slug_key" {
+			return domain.ErrTagTaken
+		}
+	case pgForeignKeyViolation:
+		switch constraint {
+		case "product_tags_product_id_fkey":
+			return domain.ErrNotFound // the product does not exist
+		case "product_tags_tag_id_fkey":
+			return domain.ErrInvalidInput // the list contains a tag that does not exist
+		}
+	}
+	return fmt.Errorf("tag repo: %w", err)
 }

@@ -45,7 +45,7 @@ func (h *Handler) RegisterAddressRoutes(r *gin.RouterGroup) {
 func (h *Handler) Create(c *gin.Context) {
 	var req addressRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -111,7 +111,11 @@ func (h *Handler) DeleteAddress(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	response.JSON(c, http.StatusOK, response.NewStatusResponse(deleteAddress))
+	status := http.StatusOK
+	if deleteAddress == 0 {
+		status = http.StatusNotFound
+	}
+	response.JSON(c, status, response.NewStatusResponse(deleteAddress))
 
 }
 
@@ -123,7 +127,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 	var req addressRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 

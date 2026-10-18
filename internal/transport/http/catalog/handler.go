@@ -67,7 +67,7 @@ func (h *Handler) ListTags(c *gin.Context) {
 func (h *Handler) ListProducts(c *gin.Context) {
 	var q listQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 

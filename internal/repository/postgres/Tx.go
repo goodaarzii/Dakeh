@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,4 +25,18 @@ func withTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *sqlc.Queries) er
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+const (
+	pgForeignKeyViolation = "23503"
+	pgCheckViolation      = "23514"
+)
+
+// pgConstraint returns the Postgres error code and the constraint name ("" and "" if it is not a Postgres error).
+func pgConstraint(err error) (code, constraint string) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code, pgErr.ConstraintName
+	}
+	return "", ""
 }

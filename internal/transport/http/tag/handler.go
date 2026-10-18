@@ -53,7 +53,7 @@ func (h *Handler) RegisterTagRoutes(r *gin.RouterGroup) {
 func (h *Handler) Create(c *gin.Context) {
 	var req tagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 	create, err := h.svc.Create(c.Request.Context(), domain.Tag{
@@ -70,12 +70,18 @@ func (h *Handler) Create(c *gin.Context) {
 func (h *Handler) Update(c *gin.Context) {
 	var req tagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_id", "invalid address id")
 		return
 	}
 	create, err := h.svc.Update(c.Request.Context(), domain.Tag{
 		Name: req.Name,
 		Slug: req.Slug,
+		ID:   id,
 	})
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
@@ -95,7 +101,11 @@ func (h *Handler) Delete(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
 		return
 	}
-	response.JSON(c, http.StatusOK, response.NewStatusResponse(deleted))
+	status := http.StatusOK
+	if deleted == 0 {
+		status = http.StatusNotFound
+	}
+	response.JSON(c, status, response.NewStatusResponse(deleted))
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
@@ -121,7 +131,7 @@ func (h *Handler) SetProductTags(c *gin.Context) {
 
 	var req setProductTagsRequest
 	if err := c.ShouldBindJSON(&req); err != nil { // JSON body, not Query
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -135,7 +145,7 @@ func (h *Handler) SetProductTags(c *gin.Context) {
 func (h *Handler) RemoveTagFromProduct(c *gin.Context) {
 	var q AddTagToProductRequest
 	if err := c.ShouldBindQuery(&q); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 	isRemoved, err := h.svc.RemoveTagFromProduct(c.Request.Context(), q.ProductID, q.TagID)
@@ -143,8 +153,11 @@ func (h *Handler) RemoveTagFromProduct(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "internal_error", err.Error())
 		return
 	}
-
-	response.JSON(c, http.StatusOK, response.NewStatusResponse(isRemoved))
+	status := http.StatusOK
+	if isRemoved == 0 {
+		status = http.StatusNotFound
+	}
+	response.JSON(c, status, response.NewStatusResponse(isRemoved))
 
 }
 

@@ -19,4 +19,9 @@ var (
 	ErrInsufficientStock   = errors.New("not enough stock")         // 409 insufficient_stock
 	ErrVariantUnavailable  = errors.New("variant is not available") // 409 variant_unavailable
 	ErrCartFull            = errors.New("cart is full")
+	ErrConflict            = errors.New("conflict") // generic 409
+	ErrSlugTaken           = errors.New("slug is already in use")
+	ErrTagTaken            = errors.New("tag name or slug is already in use")
+	ErrCategoryInUse       = errors.New("category still has products or child categories")
+	ErrUnauthorized        = errors.New("unauthorized") // a valid token for a user that no longer exists
 )

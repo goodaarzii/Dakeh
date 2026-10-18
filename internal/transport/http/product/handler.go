@@ -35,7 +35,7 @@ func NewHandler(svc Service) *Handler {
 func (h *Handler) RegisterProductRoutes(r *gin.RouterGroup) {
 
 	g := r.Group("/product")
-	g.GET("/", h.ListProducts)
+	g.GET("", h.ListProducts)
 	g.POST("", h.Create)
 	g.GET("/:id", h.GetByID)
 	g.DELETE("/:id", h.Delete)
@@ -46,7 +46,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 	var req productRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		response.WriteError(c, err)
 		return
 	}
 
@@ -56,7 +56,7 @@ func (h *Handler) Create(c *gin.Context) {
 		Slug:        req.Slug,
 		Description: req.Description,
 		Brand:       req.Brand,
-		Status:      domain.ProductStatusActive,
+		Status:      domain.ProductStatusDraft,
 	})
 	if err != nil {
 		response.WriteError(c, err)
@@ -75,7 +75,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 	var req productRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		response.WriteError(c, err)
 		return
 	}
 
@@ -127,36 +127,10 @@ func (h *Handler) Delete(c *gin.Context) {
 	response.JSON(c, http.StatusOK, response.NewStatusResponse(deleteResult))
 
 }
-func (h *Handler) ListProductsByCategory(c *gin.Context) {
-	var q listQuery
-	if err := c.ShouldBindQuery(&q); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
-		return
-	}
-	page, pageSize, _ := q.paging()
-
-	var categoryID *uuid.UUID
-	if q.CategoryID != "" {
-		id, err := uuid.Parse(q.CategoryID)
-		if err != nil {
-			response.Error(c, http.StatusBadRequest, "invalid_category_id", "invalid category id")
-			return
-		}
-		categoryID = &id
-	}
-
-	products, err := h.svc.ListProductsByCategory(c.Request.Context(), categoryID, page, pageSize)
-	if err != nil {
-		response.WriteError(c, err)
-		return
-	}
-
-	response.JSON(c, http.StatusOK, toProductListResponse(products, page, pageSize))
-}
 func (h *Handler) ListProducts(c *gin.Context) {
 	var q listQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+		response.WriteError(c, err)
 		return
 	}
 	page, pageSize, offset := q.paging()

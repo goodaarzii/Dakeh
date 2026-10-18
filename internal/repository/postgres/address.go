@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type AddressRepo struct {
@@ -33,7 +36,7 @@ func (r *AddressRepo) Create(ctx context.Context, u domain.Address) (domain.Addr
 		IsDefault:     u.IsDefault,
 	})
 	if err != nil {
-		return domain.Address{}, err
+		return domain.Address{}, mapAddressErr(err)
 	}
 	return toDomainAddress(row), nil
 }
@@ -46,7 +49,7 @@ func (r *AddressRepo) GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUI
 			UserID: userID,
 		})
 	if err != nil {
-		return domain.Address{}, err
+		return domain.Address{}, mapAddressErr(err)
 	}
 	return toDomainAddress(addressByID), nil
 
@@ -55,7 +58,7 @@ func (r *AddressRepo) GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUI
 func (r *AddressRepo) GetUserAddresses(ctx context.Context, userID uuid.UUID) ([]domain.Address, error) {
 	addresses, err := r.q.ListAddressesByUser(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, mapAddressErr(err)
 	}
 
 	return toDomainAddresses(addresses), err
@@ -68,7 +71,7 @@ func (r *AddressRepo) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID
 		UserID: userID,
 	})
 	if err != nil {
-		return -1, err
+		return -1, mapAddressErr(err)
 	}
 
 	return address, err
@@ -92,7 +95,7 @@ func (r *AddressRepo) Update(ctx context.Context, u domain.Address) (domain.Addr
 		UserID:        u.UserID,
 	})
 	if err != nil {
-		return domain.Address{}, err
+		return domain.Address{}, mapAddressErr(err)
 	}
 
 	return toDomainAddress(row), nil
@@ -124,4 +127,26 @@ func toDomainAddresses(rows []sqlc.Address) []domain.Address {
 		out[i] = toDomainAddress(row)
 	}
 	return out
+}
+
+func mapAddressErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrNotFound // also: someone else's address, because every query includes user_id
+	}
+	switch code, constraint := pgConstraint(err); code {
+	case pgUniqueViolation:
+		if constraint == "uq_addresses_one_default_per_user" {
+			return domain.ErrConflict // this user already has a default address
+		}
+	case pgForeignKeyViolation:
+		if constraint == "addresses_user_id_fkey" {
+			return domain.ErrUnauthorized // the token is valid but the user no longer exists
+		}
+	case pgCheckViolation:
+		return domain.ErrInvalidInput // lat or lng out of range
+	}
+	return fmt.Errorf("address repo: %w", err)
 }

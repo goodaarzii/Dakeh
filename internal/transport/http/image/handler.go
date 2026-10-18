@@ -117,7 +117,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 	var req updateImageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -165,5 +165,5 @@ func writeUploadError(c *gin.Context, err error) {
 		response.Error(c, http.StatusRequestEntityTooLarge, "image_too_large", "the upload is too large")
 		return
 	}
-	response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 }

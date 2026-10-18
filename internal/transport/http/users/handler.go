@@ -31,7 +31,7 @@ func NewHandler(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// RegisterUserRoutes: PUBLIC routes. Pass the plain api group.
+// RegisterUserRoutes RegisterserRoute: PUBLIC routes. Pass the plain api group.
 //
 //	POST /api/v1/auth/register
 //	POST /api/v1/auth/login
@@ -57,7 +57,7 @@ func (h *Handler) RegisterUserProtectedRoutes(r *gin.RouterGroup) {
 func (h *Handler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -79,7 +79,7 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Refresh(c *gin.Context) {
 	var req refreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 
@@ -118,7 +118,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 func (h *Handler) Logout(c *gin.Context) {
 	var req refreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid_request", err.Error())
+
 		return
 	}
 

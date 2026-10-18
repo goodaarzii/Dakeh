@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
 	"github.com/goodaarzii/dakeh/internal/domain"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type CategoryRepo struct {
@@ -27,7 +30,7 @@ func (r *CategoryRepo) Create(ctx context.Context, u domain.Category) (domain.Ca
 		IsActive:    u.IsActive,
 	})
 	if err != nil {
-		return domain.Category{}, err
+		return domain.Category{}, mapCategoryErr(err)
 	}
 
 	return toDomainCategory(category), nil
@@ -37,7 +40,7 @@ func (r *CategoryRepo) Create(ctx context.Context, u domain.Category) (domain.Ca
 func (r *CategoryRepo) CategoryList(ctx context.Context) ([]domain.Category, error) {
 	categories, err := r.q.ListCategories(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapCategoryErr(err)
 	}
 	return toDomainCategories(categories), nil
 
@@ -46,7 +49,7 @@ func (r *CategoryRepo) CategoryList(ctx context.Context) ([]domain.Category, err
 func (r *CategoryRepo) FindByID(ctx context.Context, id uuid.UUID) (domain.Category, error) {
 	categoryByID, err := r.q.GetCategoryByID(ctx, id)
 	if err != nil {
-		return domain.Category{}, err
+		return domain.Category{}, mapCategoryErr(err)
 	}
 
 	return toDomainCategory(categoryByID), nil
@@ -65,7 +68,7 @@ func (r *CategoryRepo) Update(ctx context.Context, category domain.Category) (do
 		IsActive:    category.IsActive,
 	})
 	if err != nil {
-		return domain.Category{}, err
+		return domain.Category{}, mapCategoryErr(err)
 	}
 	return toDomainCategory(updateCategory), nil
 }
@@ -73,7 +76,10 @@ func (r *CategoryRepo) Update(ctx context.Context, category domain.Category) (do
 func (r *CategoryRepo) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
 	deleteCategory, err := r.q.DeleteCategory(ctx, id)
 	if err != nil {
-		return -1, err
+		if code, _ := pgConstraint(err); code == pgForeignKeyViolation {
+			return 0, domain.ErrCategoryInUse // it still has products or child categories
+		}
+		return 0, mapCategoryErr(err)
 	}
 	return deleteCategory, nil
 }
@@ -99,4 +105,26 @@ func toDomainCategories(rows []sqlc.Category) []domain.Category {
 		out[i] = toDomainCategory(row)
 	}
 	return out
+}
+
+func mapCategoryErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrNotFound
+	}
+	switch code, constraint := pgConstraint(err); code {
+	case pgUniqueViolation:
+		if constraint == "categories_slug_key" {
+			return domain.ErrSlugTaken
+		}
+	case pgForeignKeyViolation:
+		if constraint == "categories_parent_id_fkey" {
+			return domain.ErrInvalidInput // the parent category does not exist
+		}
+	case pgCheckViolation:
+		return domain.ErrInvalidInput // for example a category that is its own parent
+	}
+	return fmt.Errorf("category repo: %w", err)
 }
