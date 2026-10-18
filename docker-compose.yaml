@@ -4,26 +4,22 @@ services:
     container_name: dakeh_postgres
     restart: unless-stopped
     environment:
-      # Values come from your .env file. Compose stops with a clear message if one is missing.
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-dakeh}
     ports:
-      - "127.0.0.1:5432:5432"   # reachable from your computer only, not from the network
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      # $$ = the variable inside the container, not in your .env
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   minio:
-    # IMPORTANT: the official minio/minio image is no longer published, so a fresh "docker pull minio/minio" fails.
-    # This is a community fork that works as a drop-in replacement (same variables, same command, same /data format).
-    # Before you rely on it, run:  docker pull pgsty/minio:RELEASE.2026-06-18T00-00-00Z
-    # If the tag or the name is gone, look on Docker Hub for the fork's current tag and pin it here.
+    # The official minio/minio image is no longer published; this is a community fork (drop-in replacement).
+    # Check that the tag exists:  docker pull pgsty/minio:RELEASE.2026-06-18T00-00-00Z
     image: pgsty/minio:RELEASE.2026-06-18T00-00-00Z
     container_name: dakeh_minio
     restart: unless-stopped
@@ -32,11 +28,31 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
     ports:
-      - "127.0.0.1:9000:9000"   # the API and the files
-      - "127.0.0.1:9001:9001"   # the web console
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
-      - minio_data:/data         # without this, "docker compose down" deletes every uploaded image
+      - minio_data:/data
+
+  redis:
+    image: redis:7-alpine          # if this image is ever unavailable, valkey/valkey is a drop-in replacement
+    container_name: dakeh_redis
+    restart: unless-stopped
+    # --requirepass: a password is needed to connect.
+    # --appendonly yes: every write is also saved to disk (AOF), so a restart does not lose the carts.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}", "--appendonly", "yes"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}   # lets redis-cli inside the container log in by itself
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres_data:
   minio_data:
+  redis_data:

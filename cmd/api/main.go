@@ -12,6 +12,7 @@ import (
 	"github.com/goodaarzii/dakeh/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/goodaarzii/dakeh/internal/app"
 	"github.com/goodaarzii/dakeh/internal/config"
@@ -56,5 +57,10 @@ func run() error {
 		return err
 	}
 
-	return app.New(cfg, pool, store).Run(ctx)
+	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr, Password: cfg.RedisPassword, DB: cfg.RedisDB})
+	defer rdb.Close()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis: %w", err)
+	}
+	return app.New(cfg, pool, store, rdb).Run(ctx)
 }

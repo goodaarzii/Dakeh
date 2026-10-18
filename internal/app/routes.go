@@ -4,9 +4,12 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	redisrepo "github.com/goodaarzii/dakeh/internal/repository/redis"
+	cart2 "github.com/goodaarzii/dakeh/internal/transport/http/cart"
 	"github.com/goodaarzii/dakeh/internal/transport/http/catalog"
 	"github.com/goodaarzii/dakeh/internal/transport/http/image"
 	taghttp "github.com/goodaarzii/dakeh/internal/transport/http/tag"
+	"github.com/goodaarzii/dakeh/internal/usecase/cart"
 	catalogUsecase "github.com/goodaarzii/dakeh/internal/usecase/catalog"
 	imageusecase "github.com/goodaarzii/dakeh/internal/usecase/image"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
@@ -94,8 +97,13 @@ func (a *Application) Mount() http.Handler {
 
 	//images
 	imageRepo := postgres.NewImageRepo(a.DB)
-	imageSvc := imageusecase.NewService(imageRepo, a.store)
+	imageSvc := imageusecase.NewService(imageRepo, a.Store)
 	image.NewHandler(imageSvc).RegisterImageRoutes(admin)
+
+	//cart
+	cartStore := redisrepo.NewCartRepo(a.Rdb, a.Config.CartTTL)
+	cartSvc := cart.NewService(cartStore, catalogRepo)
+	cart2.NewHandler(cartSvc).RegisterCartRoutes(protected)
 
 	return r
 }

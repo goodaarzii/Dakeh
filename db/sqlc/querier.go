@@ -78,6 +78,11 @@ type Querier interface {
 	// Empty values mean "no filter": category_ids = '{}', tag_slug = '', search = ''.
 	// sort is 'newest' (default), 'price_asc' or 'price_desc'.
 	ListPublicProducts(ctx context.Context, arg ListPublicProductsParams) ([]ListPublicProductsRow, error)
+	// The LIVE data of cart variants: price, name, image, stock. Redis stores only variant IDs and quantities,
+	// so a price changed in the admin is the price in the cart immediately, and a client can never fake a price.
+	// Only SELLABLE variants come back: an inactive or deleted variant, or one of a hidden product, is missing from
+	// the result, and the usecase treats a missing variant as "no longer available".
+	ListSellableVariants(ctx context.Context, variantIds []uuid.UUID) ([]ListSellableVariantsRow, error)
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTagsByProduct(ctx context.Context, productID uuid.UUID) ([]Tag, error)
 	// Tags for many products in ONE query (avoids running one query per product in a list).

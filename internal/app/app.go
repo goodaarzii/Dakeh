@@ -8,6 +8,7 @@ import (
 
 	"github.com/goodaarzii/dakeh/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/goodaarzii/dakeh/internal/config"
 )
@@ -16,11 +17,12 @@ import (
 type Application struct {
 	Config config.Config
 	DB     *pgxpool.Pool
-	store  *storage.MinioStorage
+	Store  *storage.MinioStorage
+	Rdb    *redis.Client
 }
 
-func New(cfg config.Config, db *pgxpool.Pool, store *storage.MinioStorage) *Application {
-	return &Application{Config: cfg, DB: db, store: store}
+func New(cfg config.Config, db *pgxpool.Pool, store *storage.MinioStorage, rdb *redis.Client) *Application {
+	return &Application{Config: cfg, DB: db, Store: store, Rdb: rdb}
 }
 
 // Run starts the server and shuts down gracefully when ctx is cancelled (Ctrl+C / SIGTERM).

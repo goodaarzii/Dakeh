@@ -16,4 +16,7 @@ var (
 	ErrTooManyImages       = errors.New("too many images for this product") // 409 too_many_images
 	ErrUnsupportedImage    = errors.New("unsupported image type")           // 415 unsupported_image_type
 	ErrImageTooLarge       = errors.New("image is too large")
+	ErrInsufficientStock   = errors.New("not enough stock")         // 409 insufficient_stock
+	ErrVariantUnavailable  = errors.New("variant is not available") // 409 variant_unavailable
+	ErrCartFull            = errors.New("cart is full")
 )
