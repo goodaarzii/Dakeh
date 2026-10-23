@@ -7,10 +7,12 @@ import (
 	redisrepo "github.com/goodaarzii/dakeh/internal/repository/redis"
 	cart2 "github.com/goodaarzii/dakeh/internal/transport/http/cart"
 	"github.com/goodaarzii/dakeh/internal/transport/http/catalog"
+	favorite2 "github.com/goodaarzii/dakeh/internal/transport/http/favorite"
 	"github.com/goodaarzii/dakeh/internal/transport/http/image"
 	taghttp "github.com/goodaarzii/dakeh/internal/transport/http/tag"
 	"github.com/goodaarzii/dakeh/internal/usecase/cart"
 	catalogUsecase "github.com/goodaarzii/dakeh/internal/usecase/catalog"
+	"github.com/goodaarzii/dakeh/internal/usecase/favorite"
 	imageusecase "github.com/goodaarzii/dakeh/internal/usecase/image"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 
@@ -105,6 +107,13 @@ func (a *Application) Mount() http.Handler {
 	cartStore := redisrepo.NewCartRepo(a.Rdb, a.Config.CartTTL)
 	cartSvc := cart.NewService(cartStore, catalogRepo)
 	cart2.NewHandler(cartSvc).RegisterCartRoutes(protected)
+
+	//fav
+	favoriteRepo := postgres.NewFavoriteRepo(queries)
+	favSvc := favorite.NewService(favoriteRepo)
+	favorite2.NewHandler(favSvc).RegisterFavoriteRoutes(protected)
+
+	//favorites (a user's saved products)
 
 	return r
 }

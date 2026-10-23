@@ -6,11 +6,15 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Querier interface {
+	// Favorites are private to the authenticated user. Product visibility is checked when
+	// adding a new favorite; the listing query follows the same visibility rules as the shop.
+	AddFavorite(ctx context.Context, arg AddFavoriteParams) (int64, error)
 	// Adding a tag that is already there does nothing (safe to repeat).
 	AddTagsToProduct(ctx context.Context, arg AddTagsToProductParams) error
 	// Add or remove stock: delta +50 = restock, delta -3 = write-off.
@@ -46,6 +50,7 @@ type Querier interface {
 	GetAddressByID(ctx context.Context, arg GetAddressByIDParams) (Address, error)
 	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
 	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
+	GetFavoriteCreatedAt(ctx context.Context, arg GetFavoriteCreatedAtParams) (time.Time, error)
 	GetInventory(ctx context.Context, variantID uuid.UUID) (Inventory, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
 	GetProductImageByID(ctx context.Context, id uuid.UUID) (ProductImage, error)
@@ -55,6 +60,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetVariantByID(ctx context.Context, id uuid.UUID) (ProductVariant, error)
+	IsFavorite(ctx context.Context, arg IsFavoriteParams) (bool, error)
 	// Public (customer-facing) reads. Only visible things: active products, active variants, active categories.
 	ListActiveCategories(ctx context.Context) ([]Category, error)
 	// Sellable variants only. (The admin ListVariantsByProduct does not filter on is_active.)
@@ -67,6 +73,10 @@ type Querier interface {
 	ListAddressesByUser(ctx context.Context, userID uuid.UUID) ([]Address, error)
 	// Returns every category. The usecase builds the tree from this flat list.
 	ListCategories(ctx context.Context) ([]Category, error)
+	// One row per visible, sellable product. The returned card data matches GET /products.
+	// Favorite records remain saved if a product is temporarily hidden/unavailable; such
+	// products are omitted from this list until they become visible in the public catalog.
+	ListFavoriteProducts(ctx context.Context, userID uuid.UUID) ([]ListFavoriteProductsRow, error)
 	// The primary image first, then by sort_order.
 	ListImagesByProduct(ctx context.Context, productID uuid.UUID) ([]ProductImage, error)
 	// Stock for many variants in ONE query.
@@ -92,6 +102,7 @@ type Querier interface {
 	ListVariantsByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ProductVariant, error)
 	// After deleting the primary image: make the first remaining image primary. Does nothing if one exists.
 	PromoteNextImage(ctx context.Context, productID uuid.UUID) error
+	RemoveFavorite(ctx context.Context, arg RemoveFavoriteParams) (int64, error)
 	RemoveTagFromProduct(ctx context.Context, arg RemoveTagFromProductParams) (int64, error)
 	// Log out everywhere Also the reaction to token REUSE (see the notes).
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error

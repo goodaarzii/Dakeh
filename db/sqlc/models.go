@@ -42,6 +42,12 @@ type Category struct {
 	UpdatedAt   time.Time
 }
 
+type Favorite struct {
+	UserID    uuid.UUID
+	ProductID uuid.UUID
+	CreatedAt time.Time
+}
+
 type Inventory struct {
 	VariantID         uuid.UUID
 	QuantityOnHand    int32
