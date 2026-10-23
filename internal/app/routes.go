@@ -34,6 +34,7 @@ import (
 // Mount is the composition root: it builds every object and connects them.
 func (a *Application) Mount() http.Handler {
 	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery(), middleware.CORS(a.Config.CORSOrigins))
 	r.Use(gin.Logger(), gin.Recovery())
 
 	r.GET("/healthz", func(c *gin.Context) {
@@ -43,7 +44,7 @@ func (a *Application) Mount() http.Handler {
 	api := r.Group("/api/v1")
 
 	queries := sqlc.New(a.DB)
-	r.Use(gin.Logger(), gin.Recovery(), middleware.CORS(a.Config.CORSOrigins))
+	//r.Use(gin.Logger(), gin.Recovery(), middleware.CORS(a.Config.CORSOrigins))
 	// shared helpers
 	hasher := security.NewBcryptHasher()
 	tokens := security.NewJWTIssuer(a.Config.JWTSecret, a.Config.JWTTTL)

@@ -6,10 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORS lets a browser frontend on another origin (for example http://localhost:5173)
-// call this API. Without it the browser blocks every request, even if the API works in Postman.
-// allowedOrigins is an exact list, never "*" together with Authorization headers.
-// Register it FIRST: r.Use(middleware.CORS(origins)), before the route groups.
+// CORS lets the browser front end (another origin, for example http://localhost:5173) call this API.
 func CORS(allowedOrigins []string) gin.HandlerFunc {
 	allowed := make(map[string]bool, len(allowedOrigins))
 	for _, o := range allowedOrigins {

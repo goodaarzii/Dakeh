@@ -162,7 +162,7 @@ type productDetailResponse struct {
 	Brand       string                `json:"brand"`
 	Category    categorySummary       `json:"category"`
 	Tags        []tagResponse         `json:"tags"`
-	Images      []publicImageResponse `json:"image"` // primary first
+	Images      []publicImageResponse `json:"images"` // primary first
 	Variants    []variantResponse     `json:"variants"`
 	AvgRating   float64               `json:"avg_rating"`
 	RatingCount int                   `json:"rating_count"`
