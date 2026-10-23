@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* Palette: ink (main), steel, mist and sand are the four colors from the brief.
+   paper and fog are lighter tints of sand and mist, brick and moss are for errors and success. */
+@theme {
+  --color-ink: #213448;
+  --color-ink-deep: #17253a;
+  --color-steel: #547792;
+  --color-mist: #94b4c1;
+  --color-fog: #dce6ea;
+  --color-sand: #eae0cf;
+  --color-paper: #f6f2e9;
+  --color-brick: #a63d2f;
+  --color-moss: #2e7b5b;
+
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--color-sand);
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--color-sand);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-stretch: 88%;
+    letter-spacing: -0.015em;
+    line-height: 1.12;
+  }
+  a {
+    color: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-steel);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-mist);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1.5px solid transparent;
+    border-radius: 0.5rem;
+    padding: 0.6rem 1.1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-ink-deep);
+  }
+  .btn-outline {
+    border-color: var(--color-ink);
+    color: var(--color-ink);
+    background: transparent;
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-quiet {
+    color: var(--color-ink);
+    background: transparent;
+  }
+  .btn-quiet:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-mist) 35%, transparent);
+  }
+  .btn-danger {
+    border-color: var(--color-brick);
+    color: var(--color-brick);
+    background: transparent;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--color-brick);
+    color: var(--color-paper);
+  }
+  .btn-sm {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .field {
+    width: 100%;
+    border: 1.5px solid var(--color-mist);
+    background: var(--color-paper);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    font: inherit;
+    color: var(--color-ink);
+  }
+  .field::placeholder {
+    color: color-mix(in srgb, var(--color-ink) 45%, transparent);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-ink);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-mist) 55%, transparent);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--color-brick);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1.5px solid var(--color-mist);
+    border-radius: 999px;
+    padding: 0.25rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .chip:hover {
+    border-color: var(--color-ink);
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  /* The awning that hangs under the header. It unrolls once, when the page first loads. */
+  .awning {
+    height: 24px;
+    background: url("/images/awning.svg") repeat-x left top;
+    background-size: 56px 24px;
+    transform-origin: top;
+    animation: awning-drop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes awning-drop {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  dialog {
+    margin: auto;
+    width: 100%;
+    max-width: min(32rem, calc(100vw - 2rem));
+    border: 1.5px solid var(--color-ink);
+    border-radius: 0.75rem;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    padding: 0;
+  }
+  dialog::backdrop {
+    background: color-mix(in srgb, var(--color-ink) 55%, transparent);
+  }
+
+  /* The pin on the address map */
+  .dakeh-pin span {
+    display: block;
+    width: 26px;
+    height: 26px;
+    margin: 2px;
+    background: var(--color-ink);
+    border: 3px solid var(--color-paper);
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
+  }
+  .leaflet-container {
+    font-family: var(--font-sans);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .awning {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
