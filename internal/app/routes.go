@@ -9,11 +9,13 @@ import (
 	"github.com/goodaarzii/dakeh/internal/transport/http/catalog"
 	favorite2 "github.com/goodaarzii/dakeh/internal/transport/http/favorite"
 	"github.com/goodaarzii/dakeh/internal/transport/http/image"
+	review2 "github.com/goodaarzii/dakeh/internal/transport/http/review"
 	taghttp "github.com/goodaarzii/dakeh/internal/transport/http/tag"
 	"github.com/goodaarzii/dakeh/internal/usecase/cart"
 	catalogUsecase "github.com/goodaarzii/dakeh/internal/usecase/catalog"
 	"github.com/goodaarzii/dakeh/internal/usecase/favorite"
 	imageusecase "github.com/goodaarzii/dakeh/internal/usecase/image"
+	"github.com/goodaarzii/dakeh/internal/usecase/review"
 	userusecase "github.com/goodaarzii/dakeh/internal/usecase/user"
 
 	"github.com/goodaarzii/dakeh/db/sqlc"
@@ -113,7 +115,10 @@ func (a *Application) Mount() http.Handler {
 	favSvc := favorite.NewService(favoriteRepo)
 	favorite2.NewHandler(favSvc).RegisterFavoriteRoutes(protected)
 
-	//favorites (a user's saved products)
+	//review
+	reviewRepo := postgres.NewReviewRepo(queries)
+	reviewSvc := review.NewService(reviewRepo)
+	review2.NewHandler(reviewSvc).RegisterReviewRoutes(api, protected)
 
 	return r
 }

@@ -33,6 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpiredHandler(() => {
       setUser(null)
       queryClient.removeQueries({ queryKey: ['cart'] })
+      queryClient.removeQueries({ queryKey: ['favorites'] })
+      queryClient.removeQueries({ queryKey: ['my-review'] })
       toast('Your session ended. Please log in again.')
     })
     return () => setSessionExpiredHandler(null)
@@ -86,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenStore.clear()
     setUser(null)
     queryClient.removeQueries({ queryKey: ['cart'] })
+    queryClient.removeQueries({ queryKey: ['favorites'] })
+    queryClient.removeQueries({ queryKey: ['my-review'] })
   }, [queryClient])
 
   const logout = useCallback(async () => {

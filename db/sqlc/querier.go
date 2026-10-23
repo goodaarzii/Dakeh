@@ -28,18 +28,22 @@ type Querier interface {
 	ClearProductTags(ctx context.Context, productID uuid.UUID) error
 	// To enforce the maximum number of image per product.
 	CountImagesByProduct(ctx context.Context, productID uuid.UUID) (int32, error)
+	CountReviewsByProduct(ctx context.Context, productID uuid.UUID) (int64, error)
 	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	// Called right after CreateVariant, inside the same transaction.
 	CreateInventory(ctx context.Context, arg CreateInventoryParams) (Inventory, error)
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	CreateProductImage(ctx context.Context, arg CreateProductImageParams) (ProductImage, error)
+	// Create only. uq_reviews_product_user rejects a second review for the same user/product.
+	CreateProductReview(ctx context.Context, arg CreateProductReviewParams) (CreateProductReviewRow, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateVariant(ctx context.Context, arg CreateVariantParams) (ProductVariant, error)
 	// Fails with a foreign key error (23503) if the category still has products or children.
 	DeleteCategory(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteMyReview(ctx context.Context, arg DeleteMyReviewParams) (int64, error)
 	// For a cleanup job later: tokens that expired more than 7 days ago are useless.
 	DeleteOldRefreshTokens(ctx context.Context) (int64, error)
 	// Returns the deleted row, so the usecase knows storage_key (to delete the file) and was it primary.
@@ -52,8 +56,12 @@ type Querier interface {
 	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
 	GetFavoriteCreatedAt(ctx context.Context, arg GetFavoriteCreatedAtParams) (time.Time, error)
 	GetInventory(ctx context.Context, variantID uuid.UUID) (Inventory, error)
+	// Used by the logged-in reviewer to find whether they have an existing review for this product.
+	GetMyReviewForProduct(ctx context.Context, arg GetMyReviewForProductParams) (GetMyReviewForProductRow, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
 	GetProductImageByID(ctx context.Context, id uuid.UUID) (ProductImage, error)
+	// Resolve only products that are currently visible in the public catalog.
+	GetPublicProductIDByID(ctx context.Context, productID uuid.UUID) (uuid.UUID, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
 	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
@@ -88,6 +96,9 @@ type Querier interface {
 	// Empty values mean "no filter": category_ids = '{}', tag_slug = '', search = ''.
 	// sort is 'newest' (default), 'price_asc' or 'price_desc'.
 	ListPublicProducts(ctx context.Context, arg ListPublicProductsParams) ([]ListPublicProductsRow, error)
+	ListReviews(ctx context.Context, arg ListReviewsParams) ([]ListReviewsRow, error)
+	// Public product reviews, newest first.
+	ListReviewsByProduct(ctx context.Context, arg ListReviewsByProductParams) ([]ListReviewsByProductRow, error)
 	// The LIVE data of cart variants: price, name, image, stock. Redis stores only variant IDs and quantities,
 	// so a price changed in the admin is the price in the cart immediately, and a client can never fake a price.
 	// Only SELLABLE variants come back: an inactive or deleted variant, or one of a hidden product, is missing from
@@ -121,6 +132,8 @@ type Querier interface {
 	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
 	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
+	// Update/delete always include user_id from the token, so users cannot modify another user's review.
+	UpdateMyReview(ctx context.Context, arg UpdateMyReviewParams) (UpdateMyReviewRow, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 	UpdateProductImage(ctx context.Context, arg UpdateProductImageParams) (ProductImage, error)
 	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { HeartIcon } from '../components/icons'
-import { useDialogs } from '../components/Dialogs'
+import { ReviewSection } from '../components/ReviewSection'
 import { QuantityStepper } from '../components/QuantityStepper'
 import { Rating } from '../components/Rating'
 import { SafeImage } from '../components/SafeImage'
@@ -10,9 +10,10 @@ import { EmptyState, ErrorState, Spinner } from '../components/States'
 import { useToast } from '../components/Toast'
 import { ApiError, api } from '../lib/api'
 import { useCart } from '../lib/cart'
+import { useAuth } from '../lib/auth'
 import { friendlyError } from '../lib/messages'
 import { discountPercent, formatPrice } from '../lib/money'
-import type { ProductDetail, Variant } from '../lib/types'
+import type { FavoriteList, FavoriteStatus, ProductDetail, Variant } from '../lib/types'
 import { attributeKeys, firstVariant, pickByAttribute, valueInStock, valuesFor } from '../lib/variants'
 
 export default function ProductPage() {
@@ -46,15 +47,37 @@ export default function ProductPage() {
 
 function ProductView({ product }: { product: ProductDetail }) {
   const { addItem } = useCart()
+  const { user } = useAuth()
   const toast = useToast()
-  const dialogs = useDialogs()
+  const queryClient = useQueryClient()
+  const favorites = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => api.get<FavoriteList>('/favorites'),
+    enabled: !!user,
+  })
+  const isFavorite = (favorites.data?.items ?? []).some((item) => item.id === product.id)
+  const favoriteMutation = useMutation({
+    mutationFn: async (wasFavorite: boolean) => {
+      if (wasFavorite) {
+        await api.delete<void>(`/favorites/${product.id}`)
+        return false
+      }
+      await api.put<FavoriteStatus>(`/favorites/${product.id}`)
+      return true
+    },
+    onSuccess: async (saved) => {
+      await queryClient.invalidateQueries({ queryKey: ['favorites'] })
+      toast(saved ? 'Added to your favorites.' : 'Removed from your favorites.', { type: 'success', action: saved ? { label: 'View favorites', to: '/favorites' } : undefined })
+    },
+    onError: (err) => toast(friendlyError(err), { type: 'error' }),
+  })
 
   const [variantId, setVariantId] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [adding, setAdding] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
 
-  const images = product.images
+  const images = product.images ?? []
   const keys = useMemo(() => attributeKeys(product.variants), [product.variants])
   const variant = product.variants.find((v) => v.id === variantId) ?? firstVariant(product.variants)
   const discount = variant ? discountPercent(variant.price, variant.compare_at_price) : 0
@@ -171,11 +194,21 @@ function ProductView({ product }: { product: ProductDetail }) {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-outline !px-3 !py-3"
-                  aria-label="Add to favorites"
-                  onClick={() => dialogs.underConstruction('Favorites')}
+                  className={`btn btn-outline !px-3 !py-3 ${isFavorite ? '!text-brick' : ''}`}
+                  aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  aria-pressed={isFavorite}
+                  disabled={favoriteMutation.isPending || (!!user && favorites.isPending)}
+                  onClick={() => {
+                    if (!user) {
+                      toast('Log in to save products to your favorites.', {
+                        action: { label: 'Log in', to: `/login?next=${encodeURIComponent(`/products/${product.slug}`)}` },
+                      })
+                      return
+                    }
+                    favoriteMutation.mutate(isFavorite)
+                  }}
                 >
-                  <HeartIcon />
+                  <HeartIcon filled={isFavorite} />
                 </button>
               </div>
             </>
@@ -200,19 +233,7 @@ function ProductView({ product }: { product: ProductDetail }) {
             </div>
           )}
 
-          <div className="mt-8 border-t-[1.5px] border-mist pt-6">
-            <h2 className="text-xl">Reviews</h2>
-            <div className="mt-3 flex items-center justify-between gap-4">
-              {product.rating_count > 0 ? (
-                <Rating value={product.avg_rating} count={product.rating_count} />
-              ) : (
-                <p className="text-ink/70">No reviews yet.</p>
-              )}
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => dialogs.underConstruction('Reviews')}>
-                Write a review
-              </button>
-            </div>
-          </div>
+          <ReviewSection product={product} />
         </div>
       </div>
     </div>

@@ -113,6 +113,17 @@ type RefreshToken struct {
 	CreatedAt time.Time
 }
 
+type Review struct {
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	UserID    uuid.UUID
+	Rating    int16
+	Title     string
+	Body      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Tag struct {
 	ID        uuid.UUID
 	Name      string

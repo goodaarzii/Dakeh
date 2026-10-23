@@ -50,6 +50,22 @@ export interface ProductList {
   has_more: boolean
 }
 
+export interface FavoriteProduct extends ProductCardData {
+  category_id: string
+  favorited_at: string
+}
+
+export interface FavoriteList {
+  items: FavoriteProduct[]
+  count: number
+}
+
+export interface FavoriteStatus {
+  product_id: string
+  favorited_at: string
+  is_favorite: boolean
+}
+
 export interface ProductImage {
   url: string
   alt_text: string
@@ -140,4 +156,24 @@ export interface StatusResponse {
   code: number
   message: string
   is_success: boolean
+}
+
+
+export interface Review {
+  id: string
+  product_id: string
+  reviewer_name: string
+  rating: number
+  title: string
+  body: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewList {
+  items: Review[]
+  count: number
+  page: number
+  page_size: number
+  has_more: boolean
 }
