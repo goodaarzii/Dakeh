@@ -49,33 +49,6 @@ func (r *ReviewRepo) ListOfReviews(ctx context.Context, userid uuid.UUID, limit,
 	return items, len(items), nil
 }
 
-func (r *ReviewRepo) LIstOfReviews(ctx context.Context, productID uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
-	publicID, err := r.q.GetPublicProductIDByID(ctx, productID)
-	if err != nil {
-		return nil, 0, mapReviewErr(err)
-	}
-	rows, err := r.q.ListReviewsByProduct(ctx, sqlc.ListReviewsByProductParams{
-		ProductID: publicID, PageSize: int32(limit), PageOffset: int32(offset),
-	})
-	if err != nil {
-		return nil, 0, fmt.Errorf("review repo: list: %w", err)
-	}
-	count, err := r.q.CountReviewsByProduct(ctx, publicID)
-	if err != nil {
-		return nil, 0, fmt.Errorf("review repo: count: %w", err)
-	}
-	items := make([]domain.Review, len(rows))
-	for i, row := range rows {
-		items[i] = domain.Review{
-			ID: row.ID, ProductID: row.ProductID, UserID: row.UserID,
-			ReviewerName: row.ReviewerName, Rating: int(row.Rating),
-			Title: row.Title, Body: row.Body,
-			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-		}
-	}
-	return items, int(count), nil
-}
-
 func (r *ReviewRepo) ListByProductID(ctx context.Context, productID uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 	publicID, err := r.q.GetPublicProductIDByID(ctx, productID)
 	if err != nil {

@@ -16,6 +16,11 @@ type fakeRepository struct {
 	createCalls int
 }
 
+func (f *fakeRepository) ListOfReviews(ctx context.Context, userid uuid.UUID, limit, offset int) ([]domain.Review, int, bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (f *fakeRepository) ListByProductID(_ context.Context, _ uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 	f.listLimit, f.listOffset = limit, offset
 	items := make([]domain.Review, limit)

@@ -18,6 +18,7 @@ type Service interface {
 	Create(ctx context.Context, userID, productID uuid.UUID, rating int, title, body string) (domain.Review, error)
 	UpdateMine(ctx context.Context, userID, reviewID uuid.UUID, rating int, title, body string) (domain.Review, error)
 	DeleteMine(ctx context.Context, userID, reviewID uuid.UUID) error
+	ListOfReviews(ctx context.Context, userid uuid.UUID, limit, offset int) ([]domain.Review, int, bool, error)
 }
 
 type Handler struct {
@@ -41,6 +42,7 @@ func (h *Handler) RegisterReviewRoutes(api, protected *gin.RouterGroup) {
 	// can share the route tree; for review endpoints, the value is a product UUID, not a slug.
 	api.GET("/products/:slug/reviews", h.ListByProduct)
 	protected.POST("/products/:slug/reviews", h.Create)
+	protected.GET("/reviews", h.ListOfReviews)
 	protected.GET("/reviews/mine", h.GetMineForProduct)
 	protected.PATCH("/reviews/:review_id", h.UpdateMine)
 	protected.DELETE("/reviews/:review_id", h.DeleteMine)
@@ -65,6 +67,32 @@ func (h *Handler) ListByProduct(c *gin.Context) {
 	}
 
 	items, count, hasMore, err := h.svc.ListByProductID(c.Request.Context(), productID, page, pageSize)
+	if err != nil {
+		response.WriteError(c, err)
+		return
+	}
+	response.JSON(c, http.StatusOK, reviewListResponse{
+		Items: toReviewResponses(items), Count: count, Page: page, PageSize: pageSize, HasMore: hasMore,
+	})
+}
+
+func (h *Handler) ListOfReviews(c *gin.Context) {
+	userID := authenticatedUserID(c)
+
+	var q listQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid_query", "invalid review pagination")
+		return
+	}
+	page, pageSize := q.Page, q.PageSize
+	if page == 0 {
+		page = 1
+	}
+	if pageSize == 0 {
+		pageSize = 10
+	}
+
+	items, count, hasMore, err := h.svc.ListOfReviews(c.Request.Context(), userID, page, pageSize)
 	if err != nil {
 		response.WriteError(c, err)
 		return

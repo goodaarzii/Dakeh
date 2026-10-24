@@ -54,6 +54,34 @@ func (s *Service) ListByProductID(ctx context.Context, productID uuid.UUID, page
 	return items, total, hasMore, nil
 }
 
+func (s *Service) ListOfReviews(ctx context.Context, userID uuid.UUID, page, pageSize int) ([]domain.Review, int, bool, error) {
+	if userID == uuid.Nil {
+		return nil, 0, false, domain.ErrInvalidInput
+	}
+	if page < 1 {
+		page = 1
+	}
+	// Keep the SQL offset within int32 because that is PostgreSQL LIMIT/OFFSET's generated type.
+	if page > 1_000_000 {
+		return nil, 0, false, domain.ErrInvalidInput
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 50 {
+		pageSize = 50
+	}
+	items, total, err := s.repo.ListOfReviews(ctx, userID, pageSize+1, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	hasMore := len(items) > pageSize
+	if hasMore {
+		items = items[:pageSize]
+	}
+	return items, total, hasMore, nil
+}
+
 func (s *Service) GetMineForProduct(ctx context.Context, userID, productID uuid.UUID) (domain.Review, error) {
 	if userID == uuid.Nil || productID == uuid.Nil {
 		return domain.Review{}, domain.ErrInvalidInput
