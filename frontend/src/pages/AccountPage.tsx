@@ -1,19 +1,29 @@
-import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AddressForm } from '../components/AddressForm'
 import { useDialogs } from '../components/Dialogs'
-import { PinIcon, PlusIcon } from '../components/icons'
+import { PinIcon, PlusIcon, StarIcon } from '../components/icons'
+import { ProductCard } from '../components/ProductCard'
 import { EmptyState, ErrorState, Spinner } from '../components/States'
 import { useToast } from '../components/Toast'
 import { ApiError, api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { friendlyError } from '../lib/messages'
-import type { Address, StatusResponse } from '../lib/types'
+import type { Address, FavoriteList, Review, ReviewList, StatusResponse } from '../lib/types'
+
+const PAGE_SIZE = 10
+type MyReview = Review & { product_name?: string; product_slug?: string; product_image_url?: string }
+type MyReviewList = Omit<ReviewList, 'items'> & { items: MyReview[] }
+
+type AccountTab = 'profile' | 'addresses' | 'favorites' | 'reviews'
 
 export default function AccountPage() {
   const [params] = useSearchParams()
-  const tab = params.get('tab') === 'addresses' ? 'addresses' : 'profile'
+  const requestedTab = params.get('tab')
+  const tab: AccountTab = requestedTab === 'addresses' || requestedTab === 'favorites' || requestedTab === 'reviews'
+    ? requestedTab
+    : 'profile'
 
   const tabClass = (active: boolean) =>
     `rounded-full px-4 py-1.5 font-semibold transition-colors ${active ? 'bg-ink text-paper' : 'hover:bg-mist/35'}`
@@ -21,16 +31,27 @@ export default function AccountPage() {
   return (
     <div>
       <h1 className="text-4xl">Your account</h1>
-      <nav className="mt-6 flex gap-2" aria-label="Account sections">
+      <nav className="mt-6 flex flex-wrap gap-2" aria-label="Account sections">
         <Link to="/account" className={tabClass(tab === 'profile')} aria-current={tab === 'profile' ? 'page' : undefined}>
-          Profile
+          Details
         </Link>
         <Link to="/account?tab=addresses" className={tabClass(tab === 'addresses')} aria-current={tab === 'addresses' ? 'page' : undefined}>
           Addresses
         </Link>
+        <Link to="/account?tab=favorites" className={tabClass(tab === 'favorites')} aria-current={tab === 'favorites' ? 'page' : undefined}>
+          Favorites
+        </Link>
+        <Link to="/account?tab=reviews" className={tabClass(tab === 'reviews')} aria-current={tab === 'reviews' ? 'page' : undefined}>
+          My reviews
+        </Link>
       </nav>
 
-      <div className="mt-8">{tab === 'profile' ? <ProfileTab /> : <AddressesTab />}</div>
+      <div className="mt-8">
+        {tab === 'profile' && <ProfileTab />}
+        {tab === 'addresses' && <AddressesTab />}
+        {tab === 'favorites' && <FavoritesTab />}
+        {tab === 'reviews' && <MyReviewsTab />}
+      </div>
     </div>
   )
 }
@@ -81,11 +102,11 @@ function ProfileTab() {
         {rows.map(([label, value]) => (
           <div key={label} className="grid grid-cols-[10rem_1fr] gap-4 py-4">
             <dt className="text-ink/70">{label}</dt>
-            <dd className="font-semibold">{value}</dd>
+            <dd className="font-semibold">{value || '—'}</dd>
           </div>
         ))}
       </dl>
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap gap-3">
         <button type="button" className="btn btn-primary" onClick={() => void onLogout()} disabled={busy}>
           Log out
         </button>
@@ -125,7 +146,7 @@ function AddressesTab() {
       await api.delete<StatusResponse>(`/users/address/${address.id}`)
       toast('Address deleted.', { type: 'success' })
     } catch (err) {
-      // 404 means it is already gone, which is what the customer wanted.
+      // A 404 means the address is already gone, which is what the customer wanted.
       if (!(err instanceof ApiError && err.status === 404)) toast(friendlyError(err), { type: 'error' })
     } finally {
       setBusyId(null)
@@ -147,6 +168,7 @@ function AddressesTab() {
           onDone={() => {
             setEditing(null)
             toast('Address saved.', { type: 'success' })
+            void queryClient.invalidateQueries({ queryKey: ['addresses'] })
           }}
         />
       </div>
@@ -155,7 +177,7 @@ function AddressesTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-ink/75">Where we deliver your orders. You pick the exact spot on a map.</p>
         <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
           <PlusIcon className="h-4 w-4" />
@@ -170,7 +192,7 @@ function AddressesTab() {
           </EmptyState>
         </div>
       ) : (
-        <ul className="mt-8 grid grid-cols-2 gap-6">
+        <ul className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
           {addresses.map((a) => (
             <li key={a.id} className="flex flex-col rounded-lg border-[1.5px] border-mist bg-paper p-5">
               <div className="flex items-center gap-2">
@@ -201,5 +223,286 @@ function AddressesTab() {
         </ul>
       )}
     </div>
+  )
+}
+
+function FavoritesTab() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const favorites = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => api.get<FavoriteList>('/favorites'),
+    enabled: !!user,
+  })
+
+  const removeFavorite = useMutation({
+    mutationFn: (productID: string) => api.delete<void>(`/favorites/${productID}`),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['favorites'] })
+      toast('Removed from your favorites.', { type: 'success' })
+    },
+    onError: (err) => toast(friendlyError(err), { type: 'error' }),
+  })
+
+  if (favorites.isPending) return <Spinner label="Loading favorites" />
+  if (favorites.isError) return <ErrorState error={favorites.error} onRetry={() => void favorites.refetch()} />
+
+  const items = favorites.data.items ?? []
+  return (
+    <section aria-labelledby="favorites-heading">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.15em] text-ink/60">Your shortlist</p>
+          <h2 id="favorites-heading" className="mt-1 text-3xl">Favorites</h2>
+          <p className="mt-2 text-ink/70">Products you want to come back to.</p>
+        </div>
+        <span className="rounded-full border border-mist px-3 py-1 text-sm font-semibold">
+          {favorites.data.count} {favorites.data.count === 1 ? 'product' : 'products'}
+        </span>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState title="No favorites yet">
+            <p>Tap the heart on a product to keep it here for later.</p>
+            <Link to="/" className="btn btn-primary mt-4">Explore the shop</Link>
+          </EmptyState>
+        </div>
+      ) : (
+        <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((product) => (
+            <div key={product.id} className="flex flex-col items-start">
+              <div className="w-full">
+                <ProductCard product={product} />
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm mt-3"
+                disabled={removeFavorite.isPending && removeFavorite.variables === product.id}
+                onClick={() => removeFavorite.mutate(product.id)}
+              >
+                {removeFavorite.isPending && removeFavorite.variables === product.id ? 'Removing…' : 'Remove favorite'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function MyReviewsTab() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const dialogs = useDialogs()
+  const [page, setPage] = useState(1)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [rating, setRating] = useState(5)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+
+  const reviews = useQuery({
+    queryKey: ['my-reviews', user?.id, page],
+    queryFn: () => api.get<MyReviewList>('/reviews', { page, page_size: PAGE_SIZE }),
+    enabled: !!user,
+  })
+
+  const updateReview = useMutation({
+    mutationFn: ({ reviewID, input }: { reviewID: string; input: { rating: number; title: string; body: string } }) =>
+      api.patch<Review>(`/reviews/${reviewID}`, input),
+    onSuccess: async () => {
+      setEditingId(null)
+      toast('Your review has been updated.', { type: 'success' })
+      await queryClient.invalidateQueries({ queryKey: ['my-reviews', user?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['my-review'] })
+      await queryClient.invalidateQueries({ queryKey: ['reviews'] })
+      await queryClient.invalidateQueries({ queryKey: ['product'] })
+    },
+    onError: (err) => toast(friendlyError(err), { type: 'error' }),
+  })
+
+  const deleteReview = useMutation({
+    mutationFn: (reviewID: string) => api.delete<void>(`/reviews/${reviewID}`),
+    onSuccess: async () => {
+      setEditingId(null)
+      toast('Your review has been deleted.', { type: 'success' })
+      await queryClient.invalidateQueries({ queryKey: ['my-reviews', user?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['my-review'] })
+      await queryClient.invalidateQueries({ queryKey: ['reviews'] })
+      await queryClient.invalidateQueries({ queryKey: ['product'] })
+    },
+    onError: (err) => toast(friendlyError(err), { type: 'error' }),
+  })
+
+  useEffect(() => {
+    if (reviews.data && page > 1 && reviews.data.items.length === 0 && !reviews.isFetching) {
+      setPage((current) => Math.max(1, current - 1))
+    }
+  }, [reviews.data, reviews.isFetching, page])
+
+  if (reviews.isPending) return <Spinner label="Loading your reviews" />
+  if (reviews.isError) return <ErrorState error={reviews.error} onRetry={() => void reviews.refetch()} />
+
+  const items = reviews.data.items ?? []
+  const busy = updateReview.isPending || deleteReview.isPending
+
+  function startEditing(review: MyReview) {
+    setEditingId(review.id)
+    setRating(review.rating)
+    setTitle(review.title ?? '')
+    setBody(review.body)
+  }
+
+  async function onDelete(review: MyReview) {
+    const ok = await dialogs.confirm({
+      title: 'Delete your review?',
+      message: 'This review will be permanently removed from the product page.',
+      confirmLabel: 'Delete review',
+      danger: true,
+    })
+    if (ok) deleteReview.mutate(review.id)
+  }
+
+  return (
+    <section aria-labelledby="my-reviews-heading">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.15em] text-ink/60">Your feedback</p>
+          <h2 id="my-reviews-heading" className="mt-1 text-3xl">My reviews</h2>
+          <p className="mt-2 text-ink/70">Reviews you have written for products in the shop.</p>
+        </div>
+        <span className="rounded-full border border-mist px-3 py-1 text-sm font-semibold">
+          {reviews.data.count} {reviews.data.count === 1 ? 'review' : 'reviews'}
+        </span>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState title="You haven't written any reviews yet">
+            <p>Visit a product page to share your experience and help other shoppers.</p>
+            <Link to="/" className="btn btn-primary mt-4">Explore the shop</Link>
+          </EmptyState>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          {items.map((review) => {
+            const isEditing = editingId === review.id
+            const productName = review.product_name || `Product ${review.product_id.slice(0, 8)}`
+            return (
+              <article key={review.id} className="rounded-lg border-[1.5px] border-mist bg-paper p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink/60">Product review</p>
+                    {review.product_slug ? (
+                      <Link to={`/products/${review.product_slug}`} className="mt-1 block text-xl font-bold hover:underline">
+                        {productName}
+                      </Link>
+                    ) : (
+                      <h3 className="mt-1 text-xl">{productName}</h3>
+                    )}
+                    {!review.product_name && (
+                      <p className="mt-1 break-all text-xs text-ink/55" title={review.product_id}>Product ID: {review.product_id}</p>
+                    )}
+                  </div>
+                  <time className="text-sm text-ink/60" dateTime={review.created_at}>
+                    {new Date(review.created_at).toLocaleDateString('en-GB', { dateStyle: 'medium' })}
+                  </time>
+                </div>
+
+                {isEditing ? (
+                  <form
+                    className="mt-5 space-y-4 border-t border-mist pt-5"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      updateReview.mutate({ reviewID: review.id, input: { rating, title: title.trim(), body: body.trim() } })
+                    }}
+                  >
+                    <fieldset>
+                      <legend className="mb-2 text-sm font-semibold">Your rating</legend>
+                      <div className="flex gap-1" role="radiogroup" aria-label="Your rating">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <button
+                            key={value}
+                            type="button"
+                            role="radio"
+                            aria-checked={rating === value}
+                            aria-label={`${value} ${value === 1 ? 'star' : 'stars'}`}
+                            disabled={busy}
+                            onClick={() => setRating(value)}
+                            className={`rounded p-1 ${value <= rating ? 'text-steel' : 'text-mist'}`}
+                          >
+                            <StarIcon className="h-6 w-6" />
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <label className="block text-sm">
+                      <span className="mb-1 block font-semibold">Title (optional)</span>
+                      <input className="field" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} disabled={busy} />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="mb-1 block font-semibold">Review</span>
+                      <textarea
+                        className="field"
+                        value={body}
+                        onChange={(event) => setBody(event.target.value)}
+                        rows={4}
+                        minLength={3}
+                        maxLength={5000}
+                        required
+                        disabled={busy}
+                      />
+                      <span className="mt-1 block text-xs text-ink/60">3–5,000 characters</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="submit" className="btn btn-primary btn-sm" disabled={busy || body.trim().length < 3}>
+                        {updateReview.isPending ? 'Saving…' : 'Save changes'}
+                      </button>
+                      <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => setEditingId(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="mt-3 flex items-center gap-2" aria-label={`${review.rating} out of 5 stars`}>
+                      <span className="inline-flex text-steel">{Array.from({ length: review.rating }, (_, index) => <StarIcon key={index} className="h-4 w-4" />)}</span>
+                      <span className="text-sm font-semibold">{review.rating}/5</span>
+                    </div>
+                    {review.title && <h4 className="mt-3 text-lg">{review.title}</h4>}
+                    <p className="mt-2 whitespace-pre-line text-ink/85">{review.body}</p>
+                    {review.updated_at && review.updated_at !== review.created_at && (
+                      <p className="mt-2 text-xs text-ink/55">Edited</p>
+                    )}
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-mist pt-4">
+                      <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => startEditing(review)}>
+                        Edit review
+                      </button>
+                      <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={() => void onDelete(review)}>
+                        {deleteReview.isPending && deleteReview.variables === review.id ? 'Deleting…' : 'Delete review'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      )}
+
+      {(page > 1 || reviews.data.has_more) && (
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <button type="button" className="btn btn-outline btn-sm" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+            Newer reviews
+          </button>
+          <span className="text-sm text-ink/65">Page {page}</span>
+          <button type="button" className="btn btn-outline btn-sm" disabled={!reviews.data.has_more} onClick={() => setPage((current) => current + 1)}>
+            Older reviews
+          </button>
+        </div>
+      )}
+    </section>
   )
 }
