@@ -40,10 +40,10 @@ export default function CartPage() {
 
   function onCheckout() {
     if (isGuest) {
-      navigate('/login?next=/cart')
+      navigate('/login?next=/checkout')
       return
     }
-    dialogs.underConstruction('Checkout and payment')
+    navigate('/checkout')
   }
 
   if (loading) return <Spinner label="Loading your cart" />
@@ -106,7 +106,7 @@ export default function CartPage() {
               <dd className="font-display text-2xl font-bold">{formatPrice(cart.subtotal)}</dd>
             </div>
           </dl>
-          <p className="mt-2 text-sm text-ink/65">Shipping is added at checkout.</p>
+          <p className="mt-2 text-sm text-ink/65">Flat-rate shipping is $5.00 at checkout.</p>
 
           <button type="button" className="btn btn-primary mt-5 w-full !py-3" onClick={onCheckout} disabled={!cart.canCheckout}>
             {isGuest ? 'Log in to check out' : 'Check out'}

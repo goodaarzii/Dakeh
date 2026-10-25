@@ -132,6 +132,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [guestItems, setGuestItems] = useState<GuestItem[]>(readGuest)
+  const [isMergingGuestCart, setIsMergingGuestCart] = useState(false)
 
   useEffect(() => {
     localStorage.setItem(GUEST_KEY, JSON.stringify(guestItems))
@@ -149,6 +150,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId || guestItems.length === 0 || merging.current) return
     merging.current = true
+    setIsMergingGuestCart(true)
     const items = guestItems.map((i) => ({ variant_id: i.variantId, quantity: i.quantity }))
     api
       .post<ApiCart>('/cart/merge', { items })
@@ -162,6 +164,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => {
         merging.current = false
+        setIsMergingGuestCart(false)
       })
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -240,7 +243,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     () => ({
       cart,
       isGuest: !user,
-      loading: !!user && serverCart.isLoading,
+      loading: !!user && (serverCart.isLoading || isMergingGuestCart),
       error: user ? (serverCart.error as Error | null) : null,
       addItem,
       setQuantity,
@@ -248,7 +251,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clear,
       refetch: () => void serverCart.refetch(),
     }),
-    [cart, user, serverCart.isLoading, serverCart.error, serverCart, addItem, setQuantity, removeItem, clear],
+    [cart, user, serverCart.isLoading, serverCart.error, serverCart, isMergingGuestCart, addItem, setQuantity, removeItem, clear],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

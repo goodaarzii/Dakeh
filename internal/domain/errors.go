@@ -19,6 +19,7 @@ var (
 	ErrInsufficientStock   = errors.New("not enough stock")         // 409 insufficient_stock
 	ErrVariantUnavailable  = errors.New("variant is not available") // 409 variant_unavailable
 	ErrCartFull            = errors.New("cart is full")
+	ErrOrderCannotCancel   = errors.New("order cannot be cancelled")
 	ErrConflict            = errors.New("conflict") // generic 409
 	ErrSlugTaken           = errors.New("slug is already in use")
 	ErrTagTaken            = errors.New("tag name or slug is already in use")

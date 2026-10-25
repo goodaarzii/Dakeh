@@ -5,23 +5,25 @@ import { AddressForm } from '../components/AddressForm'
 import { useDialogs } from '../components/Dialogs'
 import { PinIcon, PlusIcon, StarIcon } from '../components/icons'
 import { ProductCard } from '../components/ProductCard'
+import { SafeImage } from '../components/SafeImage'
 import { EmptyState, ErrorState, Spinner } from '../components/States'
 import { useToast } from '../components/Toast'
 import { ApiError, api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { friendlyError } from '../lib/messages'
-import type { Address, FavoriteList, Review, ReviewList, StatusResponse } from '../lib/types'
+import { formatPrice } from '../lib/money'
+import type { Address, FavoriteList, Order, OrderList, Review, ReviewList, StatusResponse } from '../lib/types'
 
 const PAGE_SIZE = 10
 type MyReview = Review & { product_name?: string; product_slug?: string; product_image_url?: string }
 type MyReviewList = Omit<ReviewList, 'items'> & { items: MyReview[] }
 
-type AccountTab = 'profile' | 'addresses' | 'favorites' | 'reviews'
+type AccountTab = 'profile' | 'addresses' | 'favorites' | 'reviews' | 'orders'
 
 export default function AccountPage() {
   const [params] = useSearchParams()
   const requestedTab = params.get('tab')
-  const tab: AccountTab = requestedTab === 'addresses' || requestedTab === 'favorites' || requestedTab === 'reviews'
+  const tab: AccountTab = requestedTab === 'addresses' || requestedTab === 'favorites' || requestedTab === 'reviews' || requestedTab === 'orders'
     ? requestedTab
     : 'profile'
 
@@ -44,6 +46,9 @@ export default function AccountPage() {
         <Link to="/account?tab=reviews" className={tabClass(tab === 'reviews')} aria-current={tab === 'reviews' ? 'page' : undefined}>
           My reviews
         </Link>
+        <Link to="/account?tab=orders" className={tabClass(tab === 'orders')} aria-current={tab === 'orders' ? 'page' : undefined}>
+          My orders
+        </Link>
       </nav>
 
       <div className="mt-8">
@@ -51,6 +56,7 @@ export default function AccountPage() {
         {tab === 'addresses' && <AddressesTab />}
         {tab === 'favorites' && <FavoritesTab />}
         {tab === 'reviews' && <MyReviewsTab />}
+        {tab === 'orders' && <OrdersTab />}
       </div>
     </div>
   )
@@ -500,6 +506,153 @@ function MyReviewsTab() {
           <span className="text-sm text-ink/65">Page {page}</span>
           <button type="button" className="btn btn-outline btn-sm" disabled={!reviews.data.has_more} onClick={() => setPage((current) => current + 1)}>
             Older reviews
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+
+function OrdersTab() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const dialogs = useDialogs()
+  const [page, setPage] = useState(1)
+
+  const orders = useQuery({
+    queryKey: ['orders', user?.id, page],
+    queryFn: () => api.get<OrderList>('/orders', { page, page_size: PAGE_SIZE }),
+    enabled: !!user,
+  })
+
+  const cancelOrder = useMutation({
+    mutationFn: (orderID: string) => api.post<Order>(`/orders/${orderID}/cancel`),
+    onSuccess: async () => {
+      toast('Your order was cancelled and its reserved stock was released.', { type: 'success' })
+      await queryClient.invalidateQueries({ queryKey: ['orders', user?.id] })
+    },
+    onError: (err) => toast(friendlyError(err), { type: 'error' }),
+  })
+
+  useEffect(() => {
+    if (orders.data && page > 1 && orders.data.items.length === 0 && !orders.isFetching) {
+      setPage((current) => Math.max(1, current - 1))
+    }
+  }, [orders.data, orders.isFetching, page])
+
+  if (orders.isPending) return <Spinner label="Loading your orders" />
+  if (orders.isError) return <ErrorState error={orders.error} onRetry={() => void orders.refetch()} />
+
+  const items = orders.data.items ?? []
+  const isBusy = cancelOrder.isPending
+
+  async function onCancel(order: Order) {
+    const ok = await dialogs.confirm({
+      title: 'Cancel this order?',
+      message: 'This submitted order will be cancelled and the reserved stock will be released. No payment has been taken.',
+      confirmLabel: 'Cancel order',
+      danger: true,
+    })
+    if (ok) cancelOrder.mutate(order.id)
+  }
+
+  return (
+    <section aria-labelledby="my-orders-heading">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.15em] text-ink/60">Your purchases</p>
+          <h2 id="my-orders-heading" className="mt-1 text-3xl">My orders</h2>
+          <p className="mt-2 text-ink/70">Orders you have submitted from this account.</p>
+        </div>
+        <span className="rounded-full border border-mist px-3 py-1 text-sm font-semibold">
+          {orders.data.count} {orders.data.count === 1 ? 'order' : 'orders'}
+        </span>
+      </div>
+      <p className="mt-4 rounded-md bg-fog px-4 py-3 text-sm text-ink/75">
+        Online payment is not enabled yet. These orders are submitted but have not been charged.
+      </p>
+
+      {items.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState title="You haven't submitted an order yet">
+            <p>Your submitted orders will appear here.</p>
+            <Link to="/" className="btn btn-primary mt-4">Explore the shop</Link>
+          </EmptyState>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-5">
+          {items.map((order) => (
+            <article key={order.id} className="rounded-lg border-[1.5px] border-mist bg-paper p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-mist pb-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink/60">Order #{order.id.slice(0, 8).toUpperCase()}</p>
+                  <time className="mt-1 block text-sm text-ink/65" dateTime={order.created_at}>
+                    {new Date(order.created_at).toLocaleDateString('en-GB', { dateStyle: 'long' })}
+                  </time>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-sm font-semibold ${order.status === 'cancelled' ? 'bg-mist text-ink/70' : 'bg-sand text-ink'}`}>
+                  {order.status === 'cancelled' ? 'Cancelled' : 'Submitted'}
+                </span>
+              </div>
+
+              <ul className="divide-y divide-mist">
+                {order.items.map((item) => {
+                  const attributes = Object.values(item.attributes ?? {}).join(' / ')
+                  return (
+                    <li key={item.id} className="flex gap-3 py-4">
+                      <div className="h-16 w-12 shrink-0 overflow-hidden rounded-md bg-fog">
+                        <SafeImage src={item.image_url} alt={item.product_name} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {item.product_slug ? (
+                          <Link to={`/products/${item.product_slug}`} className="font-semibold hover:underline">{item.product_name}</Link>
+                        ) : (
+                          <p className="font-semibold">{item.product_name}</p>
+                        )}
+                        {(item.variant_name || attributes) && <p className="text-sm text-ink/65">{item.variant_name || attributes}</p>}
+                        <p className="mt-1 text-sm text-ink/65">Qty {item.quantity} · {formatPrice(item.unit_price)} each</p>
+                      </div>
+                      <p className="shrink-0 font-semibold">{formatPrice(item.line_total)}</p>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              <div className="grid gap-5 border-t border-mist pt-4 sm:grid-cols-[minmax(0,1fr)_13rem]">
+                <div className="text-sm text-ink/75">
+                  <p className="font-semibold text-ink">Deliver to {order.shipping_address.recipient_name}</p>
+                  <p>{order.shipping_address.street}</p>
+                  <p>{order.shipping_address.city}, {order.shipping_address.province} {order.shipping_address.postal_code}</p>
+                  <p>{order.shipping_address.country} · {order.shipping_address.phone}</p>
+                </div>
+                <dl className="space-y-1 text-sm">
+                  <div className="flex justify-between gap-3"><dt className="text-ink/65">Subtotal</dt><dd>{formatPrice(order.subtotal)}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-ink/65">Shipping</dt><dd>{formatPrice(order.shipping_fee)}</dd></div>
+                  <div className="flex justify-between gap-3 border-t border-mist pt-2 text-base font-bold"><dt>Total</dt><dd>{formatPrice(order.total)}</dd></div>
+                </dl>
+              </div>
+              {order.status === 'submitted' && (
+                <div className="mt-4 border-t border-mist pt-4">
+                  <button type="button" className="btn btn-danger btn-sm" disabled={isBusy} onClick={() => void onCancel(order)}>
+                    {cancelOrder.isPending && cancelOrder.variables === order.id ? 'Cancelling…' : 'Cancel order'}
+                  </button>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {(page > 1 || orders.data.has_more) && (
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <button type="button" className="btn btn-outline btn-sm" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+            Newer orders
+          </button>
+          <span className="text-sm text-ink/65">Page {page}</span>
+          <button type="button" className="btn btn-outline btn-sm" disabled={!orders.data.has_more} onClick={() => setPage((current) => current + 1)}>
+            Older orders
           </button>
         </div>
       )}

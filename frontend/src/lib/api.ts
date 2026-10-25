@@ -36,6 +36,7 @@ type Query = Record<string, string | number | undefined | null>
 interface Options {
   body?: unknown
   query?: Query
+  headers?: Record<string, string>
   // false = never send the access token and never try to refresh (login, register, refresh, logout)
   auth?: boolean
 }
@@ -66,6 +67,7 @@ async function rawRequest<T>(method: string, path: string, opts: Options = {}): 
     headers['Content-Type'] = 'application/json'
     body = JSON.stringify(opts.body)
   }
+  for (const [key, value] of Object.entries(opts.headers ?? {})) headers[key] = value
 
   const access = opts.auth === false ? null : tokenStore.getAccess()
   if (access) headers.Authorization = `Bearer ${access}`
@@ -167,8 +169,8 @@ async function request<T>(method: string, path: string, opts: Options = {}): Pro
 
 export const api = {
   get: <T>(path: string, query?: Query) => request<T>('GET', path, { query }),
-  post: <T>(path: string, body?: unknown, opts?: { auth?: boolean }) =>
-    request<T>('POST', path, { body, auth: opts?.auth }),
+  post: <T>(path: string, body?: unknown, opts?: { auth?: boolean; headers?: Record<string, string> }) =>
+    request<T>('POST', path, { body, auth: opts?.auth, headers: opts?.headers }),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   delete: <T>(path: string) => request<T>('DELETE', path),

@@ -5,6 +5,7 @@ import { Spinner } from './components/States'
 import { useAuth } from './lib/auth'
 import AccountPage from './pages/AccountPage'
 import CartPage from './pages/CartPage'
+import CheckoutPage from './pages/CheckoutPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -27,6 +28,7 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="products/:slug" element={<ProductPage />} />
         <Route path="cart" element={<CartPage />} />
+        <Route path="checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route

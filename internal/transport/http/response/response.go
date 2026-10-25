@@ -80,6 +80,7 @@ var errorMap = []struct {
 	{domain.ErrInsufficientStock, http.StatusConflict, "insufficient_stock", "not enough stock"},
 	{domain.ErrVariantUnavailable, http.StatusConflict, "variant_unavailable", "this item is not available"},
 	{domain.ErrCartFull, http.StatusConflict, "cart_full", "the cart is full"},
+	{domain.ErrOrderCannotCancel, http.StatusConflict, "order_cannot_cancel", "this order can no longer be cancelled"},
 
 	{domain.ErrNotFound, http.StatusNotFound, "not_found", "resource not found"},
 

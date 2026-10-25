@@ -177,3 +177,56 @@ export interface ReviewList {
   page_size: number
   has_more: boolean
 }
+
+export interface OrderAddressSnapshot {
+  label: string
+  recipient_name: string
+  phone: string
+  country: string
+  province: string
+  city: string
+  street: string
+  postal_code: string
+}
+
+export interface OrderItem {
+  id: string
+  product_id: string
+  variant_id: string
+  product_name: string
+  product_slug: string
+  variant_name: string
+  sku: string
+  attributes: Record<string, string>
+  image_url: string
+  unit_price: number
+  quantity: number
+  line_total: number
+}
+
+export interface Order {
+  id: string
+  status: 'submitted' | 'cancelled' | string
+  currency: string
+  subtotal: number
+  shipping_fee: number
+  total: number
+  shipping_address: OrderAddressSnapshot
+  items: OrderItem[]
+  created_at: string
+  updated_at: string
+  cancelled_at?: string | null
+}
+
+export interface OrderList {
+  items: Order[]
+  count: number
+  page: number
+  page_size: number
+  has_more: boolean
+}
+
+export interface CreateOrderResponse {
+  order: Order
+  cart_cleared: boolean
+}
