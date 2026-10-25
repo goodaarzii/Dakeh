@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Address struct {
@@ -54,6 +55,55 @@ type Inventory struct {
 	QuantityReserved  int32
 	LowStockThreshold int32
 	UpdatedAt         time.Time
+}
+
+type Order struct {
+	ID                    uuid.UUID
+	UserID                uuid.UUID
+	AddressID             *uuid.UUID
+	Status                string
+	IdempotencyKey        string
+	Currency              string
+	Subtotal              int64
+	ShippingFee           int64
+	Total                 int64
+	ShippingLabel         string
+	ShippingRecipientName string
+	ShippingPhone         string
+	ShippingCountry       string
+	ShippingProvince      string
+	ShippingCity          string
+	ShippingStreet        string
+	ShippingPostalCode    string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	CancelledAt           *time.Time
+}
+
+type OrderItem struct {
+	ID          uuid.UUID
+	OrderID     uuid.UUID
+	ProductID   uuid.UUID
+	VariantID   uuid.UUID
+	ProductName string
+	ProductSlug string
+	VariantName string
+	Sku         string
+	Attributes  []byte
+	ImageUrl    string
+	UnitPrice   int64
+	Quantity    int32
+	LineTotal   int64
+	CreatedAt   time.Time
+}
+
+type OrderStatusHistory struct {
+	ID         uuid.UUID
+	OrderID    uuid.UUID
+	FromStatus pgtype.Text
+	ToStatus   string
+	Note       string
+	CreatedAt  time.Time
 }
 
 type Product struct {
@@ -122,6 +172,17 @@ type Review struct {
 	Body      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type StockMovement struct {
+	ID            uuid.UUID
+	VariantID     uuid.UUID
+	DeltaOnHand   int32
+	DeltaReserved int32
+	Reason        string
+	ReferenceType string
+	ReferenceID   uuid.UUID
+	CreatedAt     time.Time
 }
 
 type Tag struct {

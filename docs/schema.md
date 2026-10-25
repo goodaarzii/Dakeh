@@ -1,30 +1,28 @@
 # Dakeh Database Schema
 
-Entity-relationship diagram (rendered automatically by GitHub). Money is stored as integer cents in USD. The cart lives in Redis and is not part of this diagram.
+This page keeps the schema diagram as Mermaid so GitHub can render it directly. The first diagram describes tables present in the current migrations (`db/migrations/00001` through `00010`). The cart is stored in Redis and therefore does not appear in the relational diagram.
+
+All product/variant prices are integer minor units. The frontend currently presents them as USD cents.
+
+## Current database schema
 
 ```mermaid
 erDiagram
-    USERS ||--o{ ADDRESSES : has
-    USERS ||--o{ REFRESH_TOKENS : owns
-    USERS ||--o{ ORDERS : places
+    USERS ||--o{ ADDRESSES : owns
+    USERS ||--o{ REFRESH_TOKENS : has
     USERS ||--o{ FAVORITES : saves
     USERS ||--o{ REVIEWS : writes
-    CATEGORIES ||--o{ CATEGORIES : "parent of"
+
+    CATEGORIES o|--o{ CATEGORIES : parent_of
     CATEGORIES ||--o{ PRODUCTS : contains
-    PRODUCTS ||--|{ PRODUCT_VARIANTS : "has variants"
-    PRODUCTS ||--o{ PRODUCT_IMAGES : "has image"
-    PRODUCT_VARIANTS |o--o{ PRODUCT_IMAGES : "shown in"
-    PRODUCTS ||--o{ PRODUCT_TAGS : "tagged with"
-    TAGS ||--o{ PRODUCT_TAGS : "used by"
-    PRODUCT_VARIANTS ||--|| INVENTORY : tracks
-    PRODUCT_VARIANTS ||--o{ STOCK_MOVEMENTS : logs
-    PRODUCT_VARIANTS ||--o{ ORDER_ITEMS : "sold as"
-    PRODUCTS ||--o{ FAVORITES : "favorited in"
+    PRODUCTS ||--o{ PRODUCT_VARIANTS : offers
+    PRODUCTS ||--o{ PRODUCT_IMAGES : has
+    PRODUCT_VARIANTS o|--o{ PRODUCT_IMAGES : optionally_shown_in
+    PRODUCTS ||--o{ PRODUCT_TAGS : tagged_with
+    TAGS ||--o{ PRODUCT_TAGS : assigned_to
+    PRODUCT_VARIANTS ||--o| INVENTORY : tracks
+    PRODUCTS ||--o{ FAVORITES : saved_by
     PRODUCTS ||--o{ REVIEWS : receives
-    ORDERS ||--|{ ORDER_ITEMS : contains
-    ORDERS ||--o{ PAYMENTS : "paid by"
-    ORDERS ||--o{ ORDER_STATUS_HISTORY : tracks
-    ORDERS |o--o{ STOCK_MOVEMENTS : causes
 
     USERS {
         uuid id PK
@@ -52,7 +50,7 @@ erDiagram
     ADDRESSES {
         uuid id PK
         uuid user_id FK
-        string label "home, work"
+        string label
         string recipient_name
         string phone
         string country
@@ -64,141 +62,161 @@ erDiagram
         float lng
         boolean is_default
         timestamp created_at
+        timestamp updated_at
         timestamp deleted_at
     }
 
     CATEGORIES {
         uuid id PK
-        uuid parent_id FK "null = root"
+        uuid parent_id FK
         string name
         string slug UK
         string description
         string image_url
         int sort_order
         boolean is_active
-    }
-
-    TAGS {
-        uuid id PK
-        string name UK
-        string slug UK
+        timestamp created_at
+        timestamp updated_at
     }
 
     PRODUCTS {
         uuid id PK
         uuid category_id FK
         string name
-        string slug UK
+        string slug "unique while not deleted"
         string description
         string brand
         string status "draft | active | archived"
-        float avg_rating "denormalized"
-        int rating_count "denormalized"
+        float avg_rating
+        int rating_count
         timestamp created_at
         timestamp updated_at
         timestamp deleted_at
     }
 
+    TAGS {
+        uuid id PK
+        string name UK
+        string slug UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
     PRODUCT_TAGS {
-        uuid product_id "PK, FK"
-        uuid tag_id "PK, FK"
+        uuid product_id PK, FK
+        uuid tag_id PK, FK
     }
 
     PRODUCT_VARIANTS {
         uuid id PK
         uuid product_id FK
-        string sku UK
-        string name "e.g. Red / XL"
-        bigint price "minor units"
-        bigint compare_at_price "old price, optional"
-        jsonb attributes "color, size, ..."
+        string sku "unique while not deleted"
+        string name
+        bigint price "integer cents"
+        bigint compare_at_price "0 means none"
+        jsonb attributes
         int weight_grams
         boolean is_active
+        timestamp created_at
+        timestamp updated_at
         timestamp deleted_at
     }
 
-    PRODUCT_IMAGES {
-        uuid id PK
-        uuid product_id FK
-        uuid variant_id FK "optional"
-        string storage_key
-        string url
-        string alt_text
-        int sort_order
-        boolean is_primary
-    }
-
     INVENTORY {
-        uuid variant_id "PK, FK"
+        uuid variant_id PK, FK
         int quantity_on_hand
         int quantity_reserved
         int low_stock_threshold
         timestamp updated_at
     }
 
-    STOCK_MOVEMENTS {
+    PRODUCT_IMAGES {
         uuid id PK
-        uuid variant_id FK
-        uuid order_id FK "optional"
-        uuid created_by FK "user, optional"
-        int delta "+ in, - out"
-        string reason "restock | sale | cancel | return | adjustment"
+        uuid product_id FK
+        uuid variant_id FK "optional"
+        string storage_key UK
+        string url
+        string alt_text
+        int sort_order
+        boolean is_primary
         timestamp created_at
     }
 
     FAVORITES {
-        uuid user_id "PK, FK"
-        uuid product_id "PK, FK"
+        uuid user_id PK, FK
+        uuid product_id PK, FK
         timestamp created_at
     }
 
     REVIEWS {
         uuid id PK
-        uuid user_id FK
         uuid product_id FK
+        uuid user_id FK
         smallint rating "1 to 5"
         string title
         string body
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at
     }
+```
+
+### Notes on the current schema
+
+- `favorites` has a composite primary key on `(user_id, product_id)`, preventing duplicate favorites.
+- `reviews` has a unique constraint on `(product_id, user_id)`: one review per customer per product. A trigger maintains the product's average rating and review count.
+- A product or variant may be soft-deleted; its `deleted_at` column preserves the row when historical references may matter.
+- `inventory.quantity_reserved` cannot exceed `quantity_on_hand`. Available stock is `quantity_on_hand - quantity_reserved`.
+- Product image bytes are not stored in PostgreSQL. The database stores each object's storage key and public URL; MinIO/S3 stores the object itself.
+- The current migration set does **not** create `orders`, `order_items`, `payments`, or checkout stock-movement tables.
+
+## Checkout/order extension (planned separately)
+
+The following is a design view for the order-submission patch, not a description of migrations `00001`–`00010`. It becomes part of the active schema only after the matching order migration is merged and applied.
+
+```mermaid
+erDiagram
+    USERS ||--o{ ORDERS : submits
+    ADDRESSES o|--o{ ORDERS : source_address
+    ORDERS ||--o{ ORDER_ITEMS : contains
+    ORDERS ||--o{ ORDER_STATUS_HISTORY : records
 
     ORDERS {
         uuid id PK
         uuid user_id FK
-        string order_number UK
-        string status "pending | paid | shipped | delivered | cancelled | refunded"
-        string idempotency_key UK
+        uuid address_id FK "nullable after address removal"
+        string status "submitted | cancelled"
+        string idempotency_key "unique per user"
+        string currency "USD"
         bigint subtotal
-        bigint shipping_fee "static, 10 USD in phase 1"
+        bigint shipping_fee
         bigint total
-        string ship_recipient_name "address snapshot"
-        string ship_phone
-        string ship_province
-        string ship_city
-        string ship_street
-        string ship_postal_code
-        float ship_lat
-        float ship_lng
-        string note
-        timestamp placed_at
-        timestamp paid_at
-        timestamp shipped_at
-        timestamp delivered_at
+        string shipping_recipient_name "snapshot"
+        string shipping_phone "snapshot"
+        string shipping_country "snapshot"
+        string shipping_province "snapshot"
+        string shipping_city "snapshot"
+        string shipping_street "snapshot"
+        string shipping_postal_code "snapshot"
+        timestamp created_at
+        timestamp updated_at
         timestamp cancelled_at
     }
 
     ORDER_ITEMS {
         uuid id PK
         uuid order_id FK
-        uuid variant_id FK
+        uuid product_id "snapshot reference"
+        uuid variant_id "snapshot reference"
         string product_name "snapshot"
+        string product_slug "snapshot"
         string variant_name "snapshot"
         string sku "snapshot"
+        jsonb attributes "snapshot"
+        string image_url "snapshot"
         bigint unit_price "snapshot"
         int quantity
         bigint line_total
+        timestamp created_at
     }
 
     ORDER_STATUS_HISTORY {
@@ -206,21 +224,20 @@ erDiagram
         uuid order_id FK
         string from_status
         string to_status
-        uuid changed_by FK "user, optional"
         string note
         timestamp created_at
     }
 
-    PAYMENTS {
+    STOCK_MOVEMENTS {
         uuid id PK
-        uuid order_id FK
-        string provider
-        string provider_ref UK
-        bigint amount
-        string status "pending | succeeded | failed | refunded"
-        string failure_reason
-        jsonb raw_response
-        timestamp paid_at
+        uuid variant_id "snapshot reference"
+        int delta_on_hand
+        int delta_reserved
+        string reason
+        string reference_type
+        uuid reference_id
         timestamp created_at
     }
 ```
+
+In this first checkout phase, an order is submitted without charging a payment method. Product/variant identifiers and display details are snapshots in `order_items` so later catalog edits/deletions do not rewrite the customer's order history. `stock_movements.reference_type` and `reference_id` can refer to the order, but this is a polymorphic reference rather than a PostgreSQL foreign key, so the diagram does not draw it as a relational edge. Payment tables/provider callbacks should be added in a later phase rather than implied by this diagram.

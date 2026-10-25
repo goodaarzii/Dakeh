@@ -1,71 +1,75 @@
-# Dakeh front end
+# Dakeh frontend
 
-The web shop for the Dakeh API. React, TypeScript, Vite and Tailwind CSS.
-Version one is for Chrome on a normal desktop screen, in English, and talks to the Go API in this repo.
+The web storefront for the Dakeh API, built with React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router, and React Leaflet. Version one is designed for an English-language desktop browser.
 
-## Run it
+## Run locally
 
-You need Node.js 20 or newer.
+Prerequisites: Node.js 20+ and npm. Start the backend and its Docker services first; see the root [README](../README.md).
+
+From PowerShell:
+
+```powershell
+cd frontend
+Copy-Item .env.example .env
+npm install
+npm run dev
+```
+
+From macOS/Linux, replace `Copy-Item .env.example .env` with `cp .env.example .env`.
+
+Open `http://localhost:5173`. The default API URL is `http://localhost:8080/api/v1`; set `VITE_API_URL` in `frontend/.env` if your API uses a different address.
+
+## Frontend features
+
+- **Shop:** browse products and use category/tag filters, search, sorting, and pagination.
+- **Product page:** inspect images, variants, prices, availability, and product reviews; add selected variants to the cart or save the product as a favorite.
+- **Cart:** guest cart in browser storage; authenticated cart fetched from Redis-backed API; merge guest items after login.
+- **Authentication:** registration, login, refresh handling, logout, and logout everywhere.
+- **Account:** profile details, address management with a map picker, Favorites, and My Reviews.
+- **Favorites:** list saved products, open product pages, and remove saved items.
+- **Reviews:** public product-level review list; eligible users can create, edit, and delete their own review. The account tab lists the signed-in user's reviews with pagination.
+- **API inspector:** use the inspector at the bottom-right of the application to inspect requests/responses and copy a cURL example.
+
+**Checkout status:** persisted orders and payment are not part of the original source snapshot. The cart's checkout UI is a placeholder until the order-submission implementation is merged. Submitting a cart does not charge a payment method in this version.
+
+## Images and API URL
+
+Set `VITE_API_URL` to the full API base URL including `/api/v1`:
+
+```env
+VITE_API_URL=http://localhost:8080/api/v1
+```
+
+Local image assets belong in `frontend/public/images/`. The app uses the configured logo and a placeholder when a product has no image. The API's MinIO/S3 configuration is managed by the backend `.env`, not `frontend/.env`.
+
+## Validation
 
 ```bash
-cd frontend
-cp .env.example .env        # on Windows: copy .env.example .env
-npm install
-npm run typecheck           # optional: checks the TypeScript
-npm run dev                 # opens on http://localhost:5173
+npm run typecheck
+npm run build
 ```
 
-The API must be running first (`docker compose up -d`, then `go run ./cmd/api`).
-`.env` has one setting: `VITE_API_URL` (default `http://localhost:8080/api/v1`).
+`npm run build` runs the TypeScript check before Vite builds the production assets.
 
-The dev server uses port 5173 on purpose. The API allows that origin through `CORS_ORIGINS`, and `middleware.CORS(...)` must be
-registered first in `routes.go`. If the page loads but the inspector shows `ERR` for every call, that is CORS.
+## Code organization
 
-## Your own images
-
-Put your files in `frontend/public/images/` with these exact names. Nothing else needs to change.
-
-| File | Used for |
-|---|---|
-| `logo.svg` | The logo in the header. A PNG also works if you change `LOGO_IMAGE` in `src/config.ts` |
-| `placeholder-product.png` | Shown for any product without a picture. A 4:5 portrait works best (for example 800 x 1000) |
-| `../favicon.svg` (in `frontend/public/`) | The tab icon |
-
-The logo, favicon and placeholder in the project are plain stand-ins.
-
-## What is in version one
-
-- Shop: product list with visible filters (categories, tags, search, sort) and previous/next paging. The address bar holds the filters.
-- Product page: pictures, variant options, price, stock, quantity, add to cart, tags, reviews summary.
-- Cart: a guest cart in the browser, and the real cart on the server after login. The guest cart is merged on login.
-- Accounts: register, log in, log out, log out everywhere, profile.
-- Addresses: add, edit and delete, with a map to drop the pin (OpenStreetMap, no key needed).
-- Under construction dialogs: checkout and payment, favorites, and writing a review.
-- API inspector: the button at the bottom right shows every request and response. "Copy as curl" uses `{{baseUrl}}` and `{{token}}`.
-
-Not in this version: orders, payment, favorites, reviews, password reset, profile editing, the admin panel and the home page banners.
-
-## How it is organized
-
-```
+```text
 src/
-  config.ts            API address, image paths, limits
+  config.ts             API URL, shop name, image paths, frontend limits
   lib/
-    api.ts             fetch wrapper: token header, refresh on 401, records every call for the inspector
-    auth.tsx           who is logged in
-    cart.tsx           one cart, two sources (guest in the browser, or the server)
-    inspector.ts       the store behind the API inspector
-    types.ts           the shapes of the API's JSON
-    variants.ts        turns variant attributes into option buttons
-    messages.ts        API error codes -> friendly sentences
-  components/          header and footer, product card, filters, dialogs, map, forms...
-  pages/               one file per screen
+    api.ts              HTTP wrapper, auth token handling, API inspector integration
+    auth.tsx            current user and authentication actions
+    cart.tsx            guest/server cart state and guest-cart merge
+    types.ts            API response/request types
+    variants.ts         product variant option helpers
+    messages.ts         API errors mapped to user-friendly messages
+  components/           layout, cards, filters, dialogs, address map, forms, reviews
+  pages/                shop, product, cart, account, login, register, not-found screens
 ```
 
-## Good to know
+## Implementation notes
 
-- Prices come from the API in cents and are shown as dollars.
-- Tokens are kept in localStorage. That is simple and common for a single-page app. A script injected into the page could read them.
-- A guest cart keeps a copy of the product name and price so it can be shown. Prices and stock are checked again after login.
-- Fonts (Bricolage Grotesque and Instrument Sans) load from Google Fonts, so the first run needs internet.
-- The address API accepts "default address" only when an address is created, so the form hides that box when you already have one.
+- API prices are integer cents and the frontend formats them as USD.
+- The API client attaches the access token for authenticated requests and attempts refresh handling on `401`.
+- The browser cart retains guest items locally; after login, the API revalidates the actual product/variant and stock state.
+- Fonts load from Google Fonts, so the first page load needs network access for the external font files.
